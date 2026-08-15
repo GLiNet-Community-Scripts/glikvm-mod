@@ -1,0 +1,17 @@
+{
+  "name": "glikvm-mod",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Patches for the GLKVM Windows desktop client: sessions in separate windows + paste local clipboard into the remote machine",
+  "type": "module",
+  "scripts": {
+    "build": "bun patch.ts build",
+    "install-mod": "bun patch.ts install",
+    "uninstall-mod": "bun patch.ts uninstall",
+    "start": "bun patch.ts run",
+    "status": "bun patch.ts status"
+  },
+  "dependencies": {
+    "@electron/asar": "^3.2.18"
+  }
+}
