@@ -88,7 +88,7 @@ This repository contains only the patch tooling and the injected code; no GL-iNe
 * Ctrl+Alt+V was chosen so Ctrl+Shift+V still reaches remote terminals. AltGr+V on layouts where that types a character will be swallowed; change the hotkey in that case.
 * The 1:1 size is computed in CSS pixels; on a display scaled above 100% the picture is 1:1 in CSS pixels, not device pixels.
 * Cloud sessions in the "+" menu reuse the relay URL they were opened with; if it has expired the session shows the usual access-denied page and you can reopen the device from the home window.
-* Tested against client 1.5.0 / Electron 34.5.8 on Windows 11 with an RM10 on firmware V1.10.0.
+* Tested against client 1.5.0 / Electron 34.5.8 on Windows 11 with four RM10 units on firmware V1.10.0.
 
 ## Changelog
 
