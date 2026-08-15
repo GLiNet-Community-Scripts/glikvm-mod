@@ -604,6 +604,44 @@ function glMergeWindows(src, dst) {
   } catch {
   }
 }
+// A tab was dragged and dropped (renderer reports the screen-space drop point).
+// Drop on another session window's tab strip -> move it there; drop elsewhere ->
+// tear it out into its own window; a lone tab just moves its window.
+function glOnTabDragEnd(event, payload) {
+  const src = require$$0$2.BrowserWindow.fromWebContents(event.sender);
+  if (!src || !glRemoteWindows.has(src)) return;
+  const { deviceId } = payload || {};
+  const x = Math.round(payload?.x);
+  const y = Math.round(payload?.y);
+  if (!deviceId || !Number.isFinite(x) || !Number.isFinite(y)) return;
+  const params = glDeviceParams.get(deviceId);
+  if (!params) return;
+  const STRIP = 44;
+  for (const dst of glRemoteWindows) {
+    if (dst === src || dst.isDestroyed()) continue;
+    const b = dst.getContentBounds();
+    if (x >= b.x && x <= b.x + b.width && y >= b.y && y <= b.y + STRIP) {
+      glDetachFromHost(src, deviceId);
+      glLog("tab dragged into another window", { deviceId });
+      glAddTab(dst, params);
+      return;
+    }
+  }
+  // dropped back on its own strip -> ignore
+  const sb = src.getContentBounds();
+  if (x >= sb.x && x <= sb.x + sb.width && y >= sb.y && y <= sb.y + STRIP) return;
+  // lone tab -> just move the window to the drop point
+  if ((src.__glDevices?.size || 0) <= 1) {
+    glSuppressMoves(src);
+    src.setPosition(Math.max(0, x - 200), Math.max(0, y - 15));
+    return;
+  }
+  // tear out into a new window at the drop point
+  const base = glGeometryFrom(src, 0) || { width: 1280, height: 720, maximized: false };
+  glDetachFromHost(src, deviceId);
+  glLog("tab torn out to new window", { deviceId, at: [x, y] });
+  openRemoteWindow(params, { target: "window", geometry: { width: base.width, height: base.height, maximized: false, x: Math.max(0, x - 200), y: Math.max(0, y - 15) } });
+}
 function glOnWindowMoved(win) {
   if (!win || win.isDestroyed()) return;
   if (Date.now() < (win.__glSuppressMoveUntil || 0)) return;
