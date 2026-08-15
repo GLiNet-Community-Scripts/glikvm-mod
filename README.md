@@ -7,7 +7,7 @@ Patches for the **GLKVM Windows desktop client** (`C:\Program Files\GLKVM`, v1.5
 | **Sessions in separate windows** | `Shift`+click a device to open it in its own window · right-click a session tab → *Move to its own window* / *Move back to the main session window* · tab menu checkbox *Always open sessions in a new window* |
 | **Paste local clipboard straight into the remote machine** | `Ctrl+Alt+V` while a session window is focused (configurable) · or right-click a tab → *Paste local clipboard into "…"* · optional *Slow paste* for flaky targets |
 | **"+" new session button** | at the end of the tab strip, like a browser's new-tab button: lists sessions you opened before and your local-access devices, or *Choose from device list...* which raises the home window and routes the next device you click into that session window as a new tab |
-| **1:1 resize to KVM resolution** | `1:1` button next to the fullscreen button in the session toolbar (or tab right-click menu) sizes the window so the remote screen is shown pixel-for-pixel; optional *Resize window to KVM resolution when a session opens* setting |
+| **1:1 resize to KVM resolution** | `1:1` button next to the fullscreen button in the session toolbar (or tab right-click menu) sizes the window so the remote screen is shown pixel-for-pixel; optional *Always open sessions at 1:1 (KVM resolution)* setting |
 | Window titles = device name | detached windows (and the main session window, for its active tab) are titled `<device> - GLKVM`, so Alt-Tab / taskbar are usable |
 | New windows inherit geometry | a moved/Shift-clicked session opens at the same size (and maximized state) as the window it came from, offset by 40 px so both stay visible |
 | Takeover dialog | starting the mod while the stock client is running (tray) asks to close it and take over, instead of silently handing off to the stock window |
@@ -49,7 +49,7 @@ All of these are in Settings → General → *Sessions (ui-mod)* (and the first 
 | `remotePasteSlow` | `false` | send `slow=1` to the device (longer inter-key delay) |
 | `remotePasteHotkey` | `"Ctrl+Alt+V"` | accelerator-style, e.g. `"Ctrl+Shift+V"`, `"CmdOrCtrl+Alt+P"`, `"F9"` |
 | `startScreen` | `"remote"` | `"local"` = open on the Local Access page instead of Remote Access |
-| `remoteFitOnOpen` | `false` | resize the window to the KVM resolution as soon as a session shows video |
+| `remoteFitOnOpen` | `false` | always open sessions at 1:1: resize the window to the KVM resolution as soon as a session shows video |
 | `recentSessions` | `[]` | last 12 sessions, used by the "+" menu (managed automatically) |
 
 ## What the client actually is (why these were the patchable bits)

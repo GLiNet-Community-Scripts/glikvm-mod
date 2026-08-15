@@ -153,12 +153,13 @@ const GL_FIT_BUTTON_INJECT = `(() => {
     clone.id = "gl-mod-fit";
     const span = clone.querySelector("span");
     if (span) {
-      span.textContent = "1:1";
-      span.style.fontSize = "17px";
-      span.style.fontWeight = "700";
-      span.style.lineHeight = "1";
-      span.style.letterSpacing = "0";
-      span.style.fontFamily = "Inter, -apple-system, Segoe UI, sans-serif";
+      // same 1em box and currentColor as the neighbouring gl-icon glyphs
+      span.innerHTML = '<svg class="gl-icon" viewBox="0 0 24 24" aria-hidden="true" style="fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round">'
+        + '<rect x="3" y="4.5" width="18" height="15" rx="2"/>'
+        + '<path d="M7.5 15V9l-1.3 1"/>'
+        + '<path d="M16.5 15V9l-1.3 1"/>'
+        + '<path d="M12 10.3v.01M12 13.7v.01" stroke-width="2"/>'
+        + '</svg>';
     }
     const btn = clone.querySelector(".action-item") || clone;
     btn.title = "Resize window to KVM resolution (1:1)";
@@ -613,7 +614,7 @@ function glShowTabMenu(event, payload) {
       click: (item) => store.set("remotePasteSlow", !!item.checked)
     },
     {
-      label: "Resize window to KVM resolution when a session opens",
+      label: "Always open sessions at 1:1 (KVM resolution)",
       type: "checkbox",
       checked: !!store.get("remoteFitOnOpen"),
       click: (item) => store.set("remoteFitOnOpen", !!item.checked)
