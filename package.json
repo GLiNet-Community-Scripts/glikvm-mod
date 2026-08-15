@@ -1,6 +1,6 @@
 {
   "name": "glikvm-mod",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "Patches for the GLKVM Windows desktop client: sessions in separate windows + paste local clipboard into the remote machine",
   "type": "module",

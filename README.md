@@ -11,7 +11,7 @@ Patches for the **GLKVM Windows desktop client** (`C:\Program Files\GLKVM`, v1.5
 | Window titles = device name | detached windows (and the main session window, for its active tab) are titled `<device> - GLKVM`, so Alt-Tab / taskbar are usable |
 | New windows inherit geometry | a moved/Shift-clicked session opens at the same size (and maximized state) as the window it came from, offset by 40 px so both stay visible |
 | Takeover dialog | starting the mod while the stock client is running (tray) asks to close it and take over, instead of silently handing off to the stock window |
-| Visible mod stamp | home footer shows `V1.5.0 release1 · ui-mod 0.1.0`, the About page shows *ui-mod installed* with a link here (the version used by the update check is untouched) |
+| Visible mod stamp | home footer shows `V1.5.0 release1 · ui-mod 0.1.1`, the About page shows *ui-mod installed* with a link here (the version used by the update check is untouched) |
 | **Start screen** | choose whether the app opens on Remote Access or Local Access |
 | **Settings UI** | Settings → General → *Sessions (ui-mod)*: start screen, open mode, paste hotkey (click, press keys), paste speed, resize on open |
 
