@@ -19,7 +19,7 @@ Everything is applied to a **side-by-side copy** in `%LOCALAPPDATA%\Programs\GLK
 
 ## Requirements
 
-* Windows 10/11 with the stock GLKVM desktop client installed (default `C:\Program Files\GLKVM`, tested with 1.5.0). Get it from https://glkvm.com if you don't have it.
+* Windows 10/11 with the stock GLKVM desktop client installed (default `C:\Program Files\GLKVM`, tested with 1.5.0). Download it from the GL-iNet app page: https://www.gl-inet.com/en-de/pages/app-rm
 * [Bun](https://bun.sh) 1.x (the JavaScript runtime that runs the patch script; Node.js is not needed). Install it with `powershell -c "irm bun.sh/install.ps1 | iex"` (or `winget install Oven-sh.Bun`, or `npm i -g bun`), then open a new terminal so `bun` is on your PATH.
 * No admin rights: the default install writes only to `%LOCALAPPDATA%\Programs\GLKVM-mod` and your Start Menu.
 
