@@ -72,23 +72,40 @@ function glFindDeviceFrame(win, cfg) {
     return null;
   }
 }
+// The device UI runs the stream in "fixed-scale" mode: the <video> stays at its native
+// size inside a scrolling container, so it never letterboxes. We size the window so that
+// scroll container becomes exactly the native video size. Chrome (header/footer/side panel)
+// = iframe viewport minus that container. Runs entirely inside the device frame.
+const GL_MEASURE = `(() => {
+  const v = document.querySelector("video");
+  if (!v || !v.videoWidth) return null;
+  // nearest ancestor that actually clips/scrolls the video area (skip wrappers sized to the video)
+  let vp = v.parentElement;
+  while (vp && vp !== document.body) {
+    const o = getComputedStyle(vp);
+    if (/(auto|scroll|hidden|clip)/.test(o.overflow + o.overflowX + o.overflowY)) break;
+    vp = vp.parentElement;
+  }
+  if (!vp || vp === document.body || vp === document.documentElement) vp = v.parentElement;
+  const r = vp.getBoundingClientRect();
+  const vw2 = Math.max(r.width, vp.clientWidth);
+  const vh2 = Math.max(r.height, vp.clientHeight);
+  return { vw: v.videoWidth, vh: v.videoHeight, vpw: Math.round(vw2), vph: Math.round(vh2), iw: window.innerWidth, ih: window.innerHeight };
+})()`;
 async function glMeasureVideo(win, cfg) {
   const frame = glFindDeviceFrame(win, cfg);
   if (!frame) return null;
   try {
-    return await frame.executeJavaScript(
-      `(() => {
-        const v = document.querySelector("video");
-        if (!v || !v.videoWidth) return null;
-        const r = v.getBoundingClientRect();
-        let box = v.parentElement || v;
-        // walk up to the element that actually bounds the video area (skip wrappers sized to the video itself)
-        while (box.parentElement && Math.abs(box.getBoundingClientRect().width - r.width) < 2 && Math.abs(box.getBoundingClientRect().height - r.height) < 2) box = box.parentElement;
-        const p = box.getBoundingClientRect();
-        return { vw: v.videoWidth, vh: v.videoHeight, bw: r.width, bh: r.height, pw: p.width, ph: p.height, iw: window.innerWidth, ih: window.innerHeight };
-      })()`,
-      true
-    );
+    const m = await frame.executeJavaScript(GL_MEASURE, true);
+    if (!m || m.iw < 50 || m.ih < 50 || m.vpw < 1 || m.vph < 1) return null;
+    // chrome = the fixed device UI around the video area (header/footer/side panels)
+    const cx = Math.max(0, m.iw - m.vpw);
+    const cy = Math.max(0, m.ih - m.vph);
+    if (cx > 1200 || cy > 800) {
+      glWarn("chrome looks wrong", { cx, cy, m });
+      return null;
+    }
+    return { vw: m.vw, vh: m.vh, iw: m.iw, ih: m.ih, cx, cy };
   } catch (e) {
     glWarn("measure failed", String(e));
     return null;
@@ -101,16 +118,27 @@ async function glFitWindowToKvm(win, deviceId, quiet) {
     if (!quiet) glNotify("Can't tell which session is active - click inside the session and try again.");
     return false;
   }
-  const m = await glMeasureVideo(win, cfg);
+  // Chrome can only be read reliably while the window is smaller than the native video
+  // (so the stream's scroll container fills the viewport instead of hugging the 1:1 content).
+  let m = await glMeasureVideo(win, cfg);
+  let [cw, ch] = win.getContentSize();
+  const needShrink = !m || cw >= m.vw || ch >= m.vh;
+  if (needShrink) {
+    if (win.isMaximized()) win.unmaximize();
+    if (win.isFullScreen()) win.setFullScreen(false);
+    win.setContentSize(Math.min(cw, 1000), Math.min(ch, 640));
+    await new Promise((r) => setTimeout(r, 200));
+    m = await glMeasureVideo(win, cfg);
+    [cw, ch] = win.getContentSize();
+  }
   if (!m) {
     if (!quiet) glNotify("No video stream yet in this session - try again once the remote screen is showing.");
     return false;
   }
-  const [cw, ch] = win.getContentSize();
   const wrapX = Math.max(0, cw - m.iw);
   const wrapY = Math.max(0, ch - m.ih);
-  const chromeX = Math.max(0, m.iw - m.pw);
-  const chromeY = Math.max(0, m.ih - m.ph);
+  const chromeX = m.cx;
+  const chromeY = m.cy;
   let targetW = Math.round(m.vw + chromeX + wrapX);
   let targetH = Math.round(m.vh + chromeY + wrapY);
   const bounds = win.getBounds();
