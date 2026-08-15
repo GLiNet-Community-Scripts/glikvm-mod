@@ -6,6 +6,8 @@ Patches for the **GLKVM Windows desktop client** (`C:\Program Files\GLKVM`, v1.5
 |---|---|
 | **Sessions in separate windows** | `Shift`+click a device to open it in its own window · right-click a session tab → *Move to its own window* / *Move back to the main session window* · tab menu checkbox *Always open sessions in a new window* |
 | **Paste local clipboard straight into the remote machine** | `Ctrl+Alt+V` while a session window is focused (configurable) · or right-click a tab → *Paste local clipboard into "…"* · optional *Slow paste* for flaky targets |
+| **"+" new session button** | at the end of the tab strip, like a browser's new-tab button: lists sessions you opened before and your local-access devices, or *Choose from device list...* which raises the home window and routes the next device you click into that session window as a new tab |
+| **1:1 resize to KVM resolution** | `1:1` button in the session window's top bar (or tab right-click menu) sizes the window so the remote screen is shown pixel-for-pixel; optional *Resize window to KVM resolution when a session opens* setting |
 | Window titles = device name | detached windows (and the main session window, for its active tab) are titled `<device> - GLKVM`, so Alt-Tab / taskbar are usable |
 | New windows inherit geometry | a moved/Shift-clicked session opens at the same size (and maximized state) as the window it came from, offset by 40 px so both stay visible |
 | Takeover dialog | starting the mod while the stock client is running (tray) asks to close it and take over, instead of silently handing off to the stock window |
@@ -38,13 +40,15 @@ Other forms: `bun patch.ts build` (only produce `build/app`), `bun patch.ts inst
 
 ## Settings
 
-All three are in Settings → General → *Sessions (ui-mod)* (and the first two also in the tab right-click menu). They live in the client's own settings file `%APPDATA%\gl-kvm\GLKVM.json`:
+All of these are in Settings → General → *Sessions (ui-mod)* (and the first two also in the tab right-click menu). They live in the client's own settings file `%APPDATA%\gl-kvm\GLKVM.json`:
 
 | key | default | meaning |
 |---|---|---|
 | `remoteOpenMode` | `"tab"` | `"window"` = every device opens in its own window (Shift+click is then irrelevant) |
 | `remotePasteSlow` | `false` | send `slow=1` to the device (longer inter-key delay) |
 | `remotePasteHotkey` | `"Ctrl+Alt+V"` | accelerator-style, e.g. `"Ctrl+Shift+V"`, `"CmdOrCtrl+Alt+P"`, `"F9"` |
+| `remoteFitOnOpen` | `false` | resize the window to the KVM resolution as soon as a session shows video |
+| `recentSessions` | `[]` | last 12 sessions, used by the "+" menu (managed automatically) |
 
 ## What the client actually is (why these were the patchable bits)
 
@@ -54,6 +58,7 @@ So the mod:
 
 * replaces the singleton with a small window manager (`src/inject/main-remote-windows.js`): tab window + N detached windows, a device→window map (re-opening a device focuses wherever it already lives), per-window webterm cleanup, session hooks registered once instead of per-window;
 * intercepts the hotkey with `webContents.on("before-input-event")` in the main process (fires *before* the iframe's keyboard capture sees it), reads `clipboard.readText()`, and `POST`s it to `<device origin>/api/hid/print?limit=0` through the window's session (so the client's `auth_token` cookie and self-signed-cert allowance apply). Errors surface as Windows notifications;
+* measures the `<video>` inside the device UI's frame with `webFrameMain.executeJavaScript` (main process, so cross-origin is fine) to size the window for a 1:1 picture;
 * adds a `data-gl-device-id` to each tab + a `contextmenu` hook in the renderer, and a handful of tiny IPC helpers in the preload (`window.utils.glMoveDevice(deviceId, "window"|"tab")` is also callable from devtools/CDP for scripting).
 
 Files: `patch.ts` (CLI), `src/patches.ts` (anchored replacements), `src/inject/main-remote-windows.js` (new main-process code), `src/inject/home-settings.js` (settings section).

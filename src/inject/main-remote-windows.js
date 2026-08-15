@@ -19,6 +19,171 @@ const glDeviceOrigins = new Set();
 let glSessionHooksInstalled = false;
 let glWindowSeq = 0;
 let glPasteInFlight = false;
+let glPendingHost = null;
+const GL_RECENT_MAX = 12;
+function glRecentSessions() {
+  const list = store.get("recentSessions");
+  return Array.isArray(list) ? list.filter((p) => p && p.device && p.device.id && p.channelIp) : [];
+}
+function glRememberSession(params) {
+  try {
+    const entry = {
+      channelIp: params.channelIp,
+      accessMode: params.accessMode,
+      device: { id: params.device.id, deviceName: params.device.deviceName, version: params.device.version }
+    };
+    const rest = glRecentSessions().filter((p) => p.device.id !== entry.device.id);
+    store.set("recentSessions", [entry, ...rest].slice(0, GL_RECENT_MAX));
+  } catch (e) {
+    glWarn("could not remember session", String(e));
+  }
+}
+function glShowHomeWindow() {
+  const home = getMainWindow();
+  if (home && !home.isDestroyed()) {
+    if (home.isMinimized()) home.restore();
+    home.show();
+    home.focus();
+    return;
+  }
+  createWindow({ windowName: "home" });
+}
+function glDeviceLabel(p) {
+  const name = p.device?.deviceName || p.device?.id;
+  if (p.accessMode === "local") {
+    const origin = glOriginOf(p.channelIp) || p.channelIp;
+    return `${name}  (${String(origin).replace(/^https?:\/\//, "")})`;
+  }
+  return `${name}  (cloud)`;
+}
+// --- resize the window so the KVM video is shown 1:1 ---------------------------
+function glFindDeviceFrame(win, cfg) {
+  const origin = glOriginOf(cfg?.channelIp);
+  if (!origin) return null;
+  try {
+    return win.webContents.mainFrame.framesInSubtree.find((f) => {
+      try {
+        return f !== win.webContents.mainFrame && new URL(f.url).origin === origin;
+      } catch {
+        return false;
+      }
+    }) || null;
+  } catch {
+    return null;
+  }
+}
+async function glMeasureVideo(win, cfg) {
+  const frame = glFindDeviceFrame(win, cfg);
+  if (!frame) return null;
+  try {
+    return await frame.executeJavaScript(
+      `(() => {
+        const v = document.querySelector("video");
+        if (!v || !v.videoWidth) return null;
+        const r = v.getBoundingClientRect();
+        let box = v.parentElement || v;
+        // walk up to the element that actually bounds the video area (skip wrappers sized to the video itself)
+        while (box.parentElement && Math.abs(box.getBoundingClientRect().width - r.width) < 2 && Math.abs(box.getBoundingClientRect().height - r.height) < 2) box = box.parentElement;
+        const p = box.getBoundingClientRect();
+        return { vw: v.videoWidth, vh: v.videoHeight, bw: r.width, bh: r.height, pw: p.width, ph: p.height, iw: window.innerWidth, ih: window.innerHeight };
+      })()`,
+      true
+    );
+  } catch (e) {
+    glWarn("measure failed", String(e));
+    return null;
+  }
+}
+async function glFitWindowToKvm(win, deviceId, quiet) {
+  if (!win || win.isDestroyed()) return false;
+  const cfg = glResolvePasteTarget(win, deviceId);
+  if (!cfg) {
+    if (!quiet) glNotify("Can't tell which session is active - click inside the session and try again.");
+    return false;
+  }
+  const m = await glMeasureVideo(win, cfg);
+  if (!m) {
+    if (!quiet) glNotify("No video stream yet in this session - try again once the remote screen is showing.");
+    return false;
+  }
+  const [cw, ch] = win.getContentSize();
+  const wrapX = Math.max(0, cw - m.iw);
+  const wrapY = Math.max(0, ch - m.ih);
+  const chromeX = Math.max(0, m.iw - m.pw);
+  const chromeY = Math.max(0, m.ih - m.ph);
+  let targetW = Math.round(m.vw + chromeX + wrapX);
+  let targetH = Math.round(m.vh + chromeY + wrapY);
+  const bounds = win.getBounds();
+  const area = require$$0$2.screen.getDisplayMatching(bounds).workArea;
+  const frameW = bounds.width - cw;
+  const frameH = bounds.height - ch;
+  const maxW = area.width - frameW;
+  const maxH = area.height - frameH;
+  let fits = true;
+  if (targetW > maxW || targetH > maxH) {
+    fits = false;
+    const scale = Math.min(maxW / targetW, maxH / targetH);
+    targetW = Math.floor(targetW * scale);
+    targetH = Math.floor(targetH * scale);
+  }
+  glLog("fit window to kvm", { device: cfg.device?.deviceName, video: `${m.vw}x${m.vh}`, chrome: { x: chromeX + wrapX, y: chromeY + wrapY }, target: `${targetW}x${targetH}`, fits });
+  if (win.isMaximized()) win.unmaximize();
+  if (win.isFullScreen()) win.setFullScreen(false);
+  win.setContentSize(targetW, targetH);
+  const nb = win.getBounds();
+  const nx = Math.max(area.x, Math.min(nb.x, area.x + area.width - nb.width));
+  const ny = Math.max(area.y, Math.min(nb.y, area.y + area.height - nb.height));
+  if (nx !== nb.x || ny !== nb.y) win.setPosition(nx, ny);
+  if (!quiet && !fits) glNotify(`${m.vw}x${m.vh} does not fit on this screen; the window was sized to the largest matching aspect ratio.`);
+  return true;
+}
+function glScheduleFitOnOpen(win, deviceId) {
+  if (!store.get("remoteFitOnOpen")) return;
+  let tries = 0;
+  const tick = async () => {
+    if (win.isDestroyed()) return;
+    if (glDeviceHost.get(deviceId) !== win) return;
+    tries += 1;
+    const cur = win.__glCurrent?.device?.id;
+    if (cur && cur !== deviceId) return;
+    const ok = await glFitWindowToKvm(win, deviceId, true);
+    if (!ok && tries < 40) setTimeout(tick, 1000);
+  };
+  setTimeout(tick, 1500);
+}
+function glShowNewSessionMenu(event) {
+  const win = require$$0$2.BrowserWindow.fromWebContents(event.sender);
+  if (!win || !glRemoteWindows.has(win)) return;
+  const open = new Set(win.__glDevices);
+  const listed = new Set();
+  const items = [];
+  const recents = glRecentSessions();
+  for (const p of recents) {
+    if (open.has(p.device.id)) continue;
+    listed.add(p.device.id);
+    items.push({ label: glDeviceLabel(p), click: () => openRemoteWindow(p, { host: win }) });
+  }
+  const locals = store.get("localAccessDevices");
+  const localItems = [];
+  for (const d of Array.isArray(locals) ? locals : []) {
+    if (!d || !d.id || !d.host || open.has(d.id) || listed.has(d.id)) continue;
+    const raw = String(d.host).trim();
+    const channelIp = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+    const params = { channelIp, accessMode: "local", device: { id: d.id, deviceName: d.name, version: d.version } };
+    localItems.push({ label: glDeviceLabel(params), click: () => openRemoteWindow(params, { host: win }) });
+  }
+  if (items.length && localItems.length) items.push({ type: "separator" });
+  items.push(...localItems);
+  if (items.length) items.push({ type: "separator" });
+  items.push({
+    label: "Choose from device list...",
+    click: () => {
+      glPendingHost = { win, until: Date.now() + 90e3 };
+      glShowHomeWindow();
+    }
+  });
+  require$$0$2.Menu.buildFromTemplate(items).popup({ window: win });
+}
 function glLog(...args) {
   logInfo("[glikvm-mod]", ...args);
 }
@@ -176,11 +341,13 @@ function glDeliverOpenRemotePage(win, params) {
   glDeviceParams.set(id, params);
   const origin = glOriginOf(params.channelIp);
   if (origin) glDeviceOrigins.add(origin);
+  glRememberSession(params);
   if (win.__glReady) {
     win.webContents.send("openRemotePage", params);
   } else {
     win.__glPending.push(params);
   }
+  glScheduleFitOnOpen(win, id);
 }
 function openRemoteWindow(rawParams, opts = {}) {
   const params = { ...rawParams };
@@ -199,6 +366,20 @@ function openRemoteWindow(rawParams, opts = {}) {
     host.focus();
     glDeliverOpenRemotePage(host, params);
     return host;
+  }
+  // "+" button flow: a specific session window asked for the next session
+  let requested = opts.host || null;
+  if (!requested && !forcedTarget && glPendingHost && glPendingHost.until > Date.now() && !glPendingHost.win.isDestroyed()) {
+    requested = glPendingHost.win;
+  }
+  glPendingHost = null;
+  if (requested && !requested.isDestroyed() && glRemoteWindows.has(requested)) {
+    glLog("opening in requesting window", id);
+    if (requested.isMinimized()) requested.restore();
+    requested.show();
+    requested.focus();
+    glDeliverOpenRemotePage(requested, params);
+    return requested;
   }
   const target = forcedTarget || glOpenMode();
   let win;
@@ -365,6 +546,10 @@ function glShowTabMenu(event, payload) {
       label: `Paste local clipboard into "${name}"  (${glPasteHotkey()})`,
       click: () => glPasteClipboardToRemote(win, deviceId)
     },
+    {
+      label: "Resize window to KVM resolution",
+      click: () => glFitWindowToKvm(win, deviceId, false)
+    },
     { type: "separator" },
     {
       label: "Always open sessions in a new window",
@@ -377,6 +562,12 @@ function glShowTabMenu(event, payload) {
       type: "checkbox",
       checked: !!store.get("remotePasteSlow"),
       click: (item) => store.set("remotePasteSlow", !!item.checked)
+    },
+    {
+      label: "Resize window to KVM resolution when a session opens",
+      type: "checkbox",
+      checked: !!store.get("remoteFitOnOpen"),
+      click: (item) => store.set("remoteFitOnOpen", !!item.checked)
     },
     { type: "separator" },
     { label: `ui-mod ${GL_MOD_VERSION} - about / source`, click: () => require$$0$2.shell.openExternal("__GL_REPO_URL__") }

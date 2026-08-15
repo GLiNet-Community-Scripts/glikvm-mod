@@ -16,7 +16,11 @@ const GL_MOD_I18N = {
   speed: "Paste speed",
   speedDesc: "Slow adds a delay between keys, for targets that drop characters",
   speedNormal: "Normal",
-  speedSlow: "Slow"
+  speedSlow: "Slow",
+  fit: "Resize window to KVM resolution when a session opens",
+  fitDesc: "Sizes the session window so the remote screen is shown 1:1 (also available any time via the 1:1 button in the session window)",
+  fitOff: "Off",
+  fitOn: "On"
 };
 try {
   for (const loc of ["en", "zh"]) i18n.global.mergeLocaleMessage(loc, { uimod: GL_MOD_I18N });
@@ -35,6 +39,14 @@ const GlModSettings = /* @__PURE__ */ defineComponent({
         pasteSlowRaw.value = v === "slow";
       }
     });
+    const fitRaw = useStorageRef("remoteFitOnOpen");
+    const fitOnOpen = computed({
+      get: () => fitRaw.value ? "on" : "off",
+      set: (v) => {
+        fitRaw.value = v === "on";
+      }
+    });
+    const FitOptions = [new GlMenuItem("off", "uimod.fitOff"), new GlMenuItem("on", "uimod.fitOn")];
     const OpenModeOptions = [new GlMenuItem("tab", "uimod.openTab"), new GlMenuItem("window", "uimod.openWindow")];
     const PasteSpeedOptions = [new GlMenuItem("normal", "uimod.speedNormal"), new GlMenuItem("slow", "uimod.speedSlow")];
     const recording = ref(false);
@@ -113,7 +125,8 @@ const GlModSettings = /* @__PURE__ */ defineComponent({
         createVNode(Wo, { divider1: "", horizontal: "", gutter: 8 }),
         row("uimod.openIn", "uimod.openInDesc", dropdown(openMode, OpenModeOptions)),
         row("uimod.hotkey", "uimod.hotkeyDesc", hotkeyControl),
-        row("uimod.speed", "uimod.speedDesc", dropdown(pasteSpeed, PasteSpeedOptions))
+        row("uimod.speed", "uimod.speedDesc", dropdown(pasteSpeed, PasteSpeedOptions)),
+        row("uimod.fit", "uimod.fitDesc", dropdown(fitOnOpen, FitOptions))
       ]);
     };
   }
