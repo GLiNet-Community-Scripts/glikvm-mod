@@ -58,7 +58,8 @@ All in Settings → General → *Sessions (ui-mod)*; they live in the client's o
 | `remoteOpenMode` | `"tab"` | `"window"` = every device opens in its own window (Shift+click is then irrelevant) |
 | `remotePasteHotkey` | `"Ctrl+Alt+V"` | accelerator-style, e.g. `"Ctrl+Shift+V"`, `"CmdOrCtrl+Alt+P"`, `"F9"` (set it from the UI by clicking the current value and pressing the keys) |
 | `remotePasteSlow` | `false` | send `slow=1` to the device (longer inter-key delay) |
-| `remoteFitOnOpen` | `false` | always open sessions at 1:1: resize the window to the KVM resolution as soon as a session shows video |
+| `remoteFitOnOpen` | `false` | always open sessions at 1:1: new windows open straight at the last known 1:1 size of that device (regardless of the window they were opened from) and are re-fitted as soon as video shows |
+| `remoteFitSizes` | `{}` | last 1:1 window size per device (managed automatically) |
 | `recentSessions` | `[]` | last 12 sessions, used by the "+" menu (managed automatically) |
 
 ## What the client actually is (why these were the patchable bits)

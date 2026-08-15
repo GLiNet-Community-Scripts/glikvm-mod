@@ -131,6 +131,7 @@ const mainPatches: Patch[] = [
           "    remotePasteSlow: false,\n",
           "    recentSessions: [],\n",
           "    remoteFitOnOpen: false,\n",
+          "    remoteFitSizes: {},\n",
           '    startScreen: "remote",\n',
           "    deviceImages: [],\n",
         ].join(""),

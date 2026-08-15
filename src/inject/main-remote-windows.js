@@ -127,6 +127,12 @@ async function glFitWindowToKvm(win, deviceId, quiet) {
     targetH = Math.floor(targetH * scale);
   }
   glLog("fit window to kvm", { device: cfg.device?.deviceName, video: `${m.vw}x${m.vh}`, chrome: { x: chromeX + wrapX, y: chromeY + wrapY }, target: `${targetW}x${targetH}`, fits });
+  try {
+    const sizes = Object.assign({}, store.get("remoteFitSizes") || {});
+    sizes[cfg.device.id] = { width: targetW, height: targetH };
+    store.set("remoteFitSizes", sizes);
+  } catch {
+  }
   if (win.isMaximized()) win.unmaximize();
   if (win.isFullScreen()) win.setFullScreen(false);
   win.setContentSize(targetW, targetH);
@@ -342,7 +348,12 @@ function glCreateRemoteWindow(kind, params, geometry) {
   setRemoteKeyBlockEnabled(false);
   const deviceId = params.device.id;
   const windowParams = kind === "window" ? { deviceId, n: String(++glWindowSeq) } : {};
-  const geo = geometry || (kind === "window" ? glGeometryFrom(remoteWindow, 0) : null);
+  let geo = geometry || (kind === "window" ? glGeometryFrom(remoteWindow, 0) : null);
+  if (store.get("remoteFitOnOpen")) {
+    // always-1:1: start straight at the last known 1:1 size for this device (the fit corrects it if the resolution changed)
+    const known = (store.get("remoteFitSizes") || {})[deviceId];
+    if (known && known.width && known.height) geo = { ...(geo || {}), width: known.width, height: known.height, maximized: false };
+  }
   glLog("create remote window", { kind, deviceId, mode: glOpenMode(), geo });
   const win = createWindow({
     windowName: "remote",
