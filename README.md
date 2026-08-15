@@ -1,6 +1,6 @@
 # glikvm-mod
 
-Patches for the **GLKVM Windows desktop client** (GL-iNet's Electron app for the Comet / RM1 / RM10 KVMs, `C:\Program Files\GLKVM`, tested with 1.5.0). It shows up in the app as **ui-mod 0.1.1**.
+Patches for the **GLKVM Windows desktop client** (GL-iNet's Electron app for the Comet / RM1 / RM10 KVMs, `C:\Program Files\GLKVM`, tested with 1.5.0). It shows up in the app as **ui-mod 0.1.5**.
 
 ## What it adds
 
@@ -14,7 +14,7 @@ Patches for the **GLKVM Windows desktop client** (GL-iNet's Electron app for the
 | Window titles = device name | detached windows (and the main session window, for its active tab) are titled `<device> - GLKVM`, so Alt-Tab and the taskbar are usable |
 | New windows inherit geometry | a moved or Shift-clicked session opens at the same size (and maximized state) as the window it came from, offset by 40 px so both stay visible |
 | Takeover dialog | starting the mod while the stock client is running (for example in the tray) asks whether to close it and take over, instead of silently handing off to the stock window |
-| Visible mod stamp | home footer shows `V1.5.0 release1 · ui-mod 0.1.1`; the About page shows *ui-mod 0.1.1 installed* with a link to this repo; the tab menu footer opens it too (the version used by the update check is untouched) |
+| Visible mod stamp | home footer shows `V1.5.0 release1 · ui-mod 0.1.5`; the About page shows *ui-mod 0.1.5 installed* with a link to this repo; the tab menu footer opens it too (the version used by the update check is untouched) |
 | **Settings UI** | Settings → General → *Sessions (ui-mod)*: start screen, open mode, paste hotkey (click, then press the keys), paste speed, always 1:1 |
 
 Everything is applied to a **side-by-side copy** in `%LOCALAPPDATA%\Programs\GLKVM-mod`: the stock install is never touched, no admin rights are needed, and uninstalling is one command. Login, device list and settings are shared with the stock client (same `%APPDATA%\gl-kvm`), so it is a drop-in replacement. Only one of the two can run at a time; if the stock client is still running when you start the mod, the mod asks whether to close it and take over.
@@ -87,6 +87,23 @@ This repository contains only the patch tooling and the injected code; no GL-iNe
 * The 1:1 size is computed in CSS pixels; on a display scaled above 100% the picture is 1:1 in CSS pixels, not device pixels.
 * Cloud sessions in the "+" menu reuse the relay URL they were opened with; if it has expired the session shows the usual access-denied page and you can reopen the device from the home window.
 * Tested against client 1.5.0 / Electron 34.5.8 on Windows 11 with an RM10 on firmware V1.10.0.
+
+## Changelog
+
+**0.1.5**
+
+* Draggable tabs: reorder within the strip, drag out to tear into a new window (a "New window" pill follows the cursor), or drop on another window's tab strip to move it there; drag a whole window onto another's strip to combine. Drop targets highlight while you hover.
+* Fixed *Move into the main session window* re-adding into an existing window instead of spawning a new one.
+* Reliable 1:1 fit for the fixed-scale stream, from any starting window size (shrinks first to measure when the window is larger than the native video).
+* Always-1:1 opens new windows straight at the device's last known 1:1 size.
+* "+" honours the *A separate window per session* mode.
+* Force a clean re-render when a window's tab set changes, clearing an occasional stale session panel.
+* Start-screen setting (Remote / Local Access); Back from Settings returns to the last access page.
+* 1:1 toolbar button restyled to match the fullscreen glyph; About-page spacing; MIT license metadata.
+
+**0.1.0**
+
+* Initial release: sessions in separate windows, "+" new-session menu, paste local clipboard hotkey, 1:1 resize, settings UI, takeover dialog, mod stamps.
 
 ## License
 
