@@ -126,6 +126,7 @@ async function glFitWindowToKvm(win, deviceId, quiet) {
   if (needShrink) {
     if (win.isMaximized()) win.unmaximize();
     if (win.isFullScreen()) win.setFullScreen(false);
+    glSuppressMoves(win);
     win.setContentSize(Math.min(cw, 1000), Math.min(ch, 640));
     await new Promise((r) => setTimeout(r, 200));
     m = await glMeasureVideo(win, cfg);
@@ -163,6 +164,7 @@ async function glFitWindowToKvm(win, deviceId, quiet) {
   }
   if (win.isMaximized()) win.unmaximize();
   if (win.isFullScreen()) win.setFullScreen(false);
+  glSuppressMoves(win);
   win.setContentSize(targetW, targetH);
   const nb = win.getBounds();
   const nx = Math.max(area.x, Math.min(nb.x, area.x + area.width - nb.width));
@@ -440,6 +442,11 @@ function glCreateRemoteWindow(kind, params, geometry) {
     win.__glPending = [];
   });
   win.webContents.on("before-input-event", (event, input) => glOnRemoteInput(win, event, input));
+  win.on("move", () => {
+    if (win.__glMoveTimer) clearTimeout(win.__glMoveTimer);
+    win.__glMoveTimer = setTimeout(() => glOnWindowMoved(win), 260);
+  });
+  glSuppressMoves(win, 2e3);
   win.webContents.on("did-frame-finish-load", (_event, isMainFrame, frameProcessId, frameRoutingId) => {
     if (!isMainFrame) glInjectFitButton(frameProcessId, frameRoutingId);
   });
@@ -522,6 +529,33 @@ async function closeRemoteWindow() {
     }
   });
 }
+// best existing session window to receive tabs (not `exclude`): the main tab window if
+// alive, else the remote window holding the most sessions
+function glTabTargetFor(exclude) {
+  if (remoteWindow && !remoteWindow.isDestroyed() && remoteWindow !== exclude && glRemoteWindows.has(remoteWindow)) return remoteWindow;
+  let best = null;
+  for (const w of glRemoteWindows) {
+    if (w === exclude || w.isDestroyed()) continue;
+    if (!best || (w.__glDevices?.size || 0) > (best.__glDevices?.size || 0)) best = w;
+  }
+  return best;
+}
+function glDetachFromHost(host, deviceId) {
+  if (!host || host.isDestroyed()) return;
+  host.__glDevices.delete(deviceId);
+  if (glDeviceHost.get(deviceId) === host) glDeviceHost.delete(deviceId);
+  host.webContents.send("glDetachTab", deviceId);
+}
+function glAddTab(dst, params) {
+  if (!remoteWindow || remoteWindow.isDestroyed()) {
+    dst.__glKind = "tab";
+    remoteWindow = dst;
+  }
+  glDeliverOpenRemotePage(dst, params);
+  if (dst.isMinimized()) dst.restore();
+  dst.show();
+  dst.focus();
+}
 function glMoveDevice(deviceId, target) {
   const params = glDeviceParams.get(deviceId);
   if (!params) {
@@ -529,16 +563,61 @@ function glMoveDevice(deviceId, target) {
     return;
   }
   const host = glDeviceHost.get(deviceId);
-  let geometry = null;
-  if (host && !host.isDestroyed()) {
-    const lastTab = host.__glDevices.size <= 1;
-    geometry = glGeometryFrom(host, lastTab ? 0 : 40);
-    host.__glDevices.delete(deviceId);
-    glDeviceHost.delete(deviceId);
-    host.webContents.send("glDetachTab", deviceId);
+  if (target === "window") {
+    let geometry = null;
+    if (host && !host.isDestroyed()) {
+      const lastTab = host.__glDevices.size <= 1;
+      geometry = glGeometryFrom(host, lastTab ? 0 : 40);
+      glDetachFromHost(host, deviceId);
+    }
+    glLog("move device to window", { deviceId, geometry });
+    openRemoteWindow(params, { target: "window", geometry });
+    return;
   }
-  glLog("move device", { deviceId, target, geometry });
-  openRemoteWindow(params, { target, geometry });
+  // move back into an existing session window as a tab
+  const dst = glTabTargetFor(host);
+  if (!dst) {
+    glNotify("There is no other session window to merge into.");
+    return;
+  }
+  glDetachFromHost(host, deviceId);
+  glLog("move device into window as tab", { deviceId });
+  glAddTab(dst, params);
+}
+// drag a session window onto another's tab strip to merge them into tabs
+function glSuppressMoves(win, ms = 900) {
+  win.__glSuppressMoveUntil = Date.now() + ms;
+}
+function glMergeWindows(src, dst) {
+  if (!src || !dst || src === dst || src.isDestroyed() || dst.isDestroyed()) return;
+  const ids = [...(src.__glDevices || [])];
+  if (!ids.length) return;
+  glLog("merge window into tabs", { count: ids.length });
+  for (const id of ids) {
+    const p = glDeviceParams.get(id);
+    src.__glDevices.delete(id);
+    if (glDeviceHost.get(id) === src) glDeviceHost.delete(id);
+    if (p) glAddTab(dst, p);
+  }
+  try {
+    src.close();
+  } catch {
+  }
+}
+function glOnWindowMoved(win) {
+  if (!win || win.isDestroyed()) return;
+  if (Date.now() < (win.__glSuppressMoveUntil || 0)) return;
+  if (!win.__glDevices || win.__glDevices.size === 0) return;
+  const pt = require$$0$2.screen.getCursorScreenPoint();
+  const STRIP = 44;
+  for (const dst of glRemoteWindows) {
+    if (dst === win || dst.isDestroyed()) continue;
+    const b = dst.getContentBounds();
+    if (pt.x >= b.x && pt.x <= b.x + b.width && pt.y >= b.y && pt.y <= b.y + STRIP) {
+      glMergeWindows(win, dst);
+      return;
+    }
+  }
 }
 function glOnTabClosed(event, deviceId) {
   const win = require$$0$2.BrowserWindow.fromWebContents(event.sender);
@@ -648,16 +727,16 @@ function glShowTabMenu(event, payload) {
   const { deviceId, tabCount } = payload || {};
   const params = glDeviceParams.get(deviceId);
   const name = params?.device?.deviceName || deviceId;
-  const kind = win.__glKind || "tab";
+  const mergeTarget = glTabTargetFor(win);
   const template = [
     {
       label: `Move "${name}" to its own window`,
-      enabled: kind === "tab" && tabCount > 1,
+      enabled: tabCount > 1,
       click: () => glMoveDevice(deviceId, "window")
     },
     {
-      label: `Move "${name}" back to the main session window`,
-      enabled: kind === "window",
+      label: `Move "${name}" into the main session window`,
+      enabled: !!mergeTarget,
       click: () => glMoveDevice(deviceId, "tab")
     },
     { type: "separator" },

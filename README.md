@@ -6,7 +6,7 @@ Patches for the **GLKVM Windows desktop client** (GL-iNet's Electron app for the
 
 | Feature | How |
 |---|---|
-| **Sessions in separate windows** | `Shift`+click a device to open it in its own window · right-click a session tab → *Move to its own window* / *Move back to the main session window* · setting *Open sessions in: Tabs / A separate window per session* |
+| **Sessions in separate windows** | `Shift`+click a device to open it in its own window · right-click a session tab → *Move to its own window* / *Move into the main session window* · **drag a session window onto another window's tab strip to combine them into tabs** · setting *Open sessions in: Tabs / A separate window per session* |
 | **"+" new session button** | at the end of the tab strip, like a browser's new-tab button: lists sessions you opened before (last 12, remembered across restarts) and your local-access devices, or *Choose from device list...* which raises the home window and routes the next device you click into that session window as a new tab (with *A separate window per session* set, "+" opens a new window instead) |
 | **Paste local clipboard into the remote machine** | `Ctrl+Alt+V` while a session window is focused (hotkey configurable) · or right-click a tab → *Paste local clipboard into "..."* · optional *Slow* paste speed for targets that drop characters |
 | **1:1 resize to KVM resolution** | button next to the fullscreen button in the session toolbar (rounded square with diagonal arrows), or tab right-click menu → *Resize window to KVM resolution*: sizes the window so the remote screen is shown pixel-for-pixel · setting *Always open sessions at 1:1 (KVM resolution)* does it automatically as soon as a session shows video |
@@ -43,7 +43,8 @@ Other forms: `bun patch.ts build` (only produce `build/app`), `bun patch.ts inst
 
 ## Using it
 
-* **Session tab right-click menu**: move to its own window / back to the main window, paste local clipboard, resize to KVM resolution, and the checkboxes *Always open sessions in a new window*, *Slow paste*, *Always open sessions at 1:1*; the last entry opens this repo.
+* **Rearranging sessions**: right-click a tab to move it to its own window or into the main session window; or drag a session window and drop it on another window's tab strip to merge them into tabs.
+* **Session tab right-click menu**: move to its own window / into the main window, paste local clipboard, resize to KVM resolution, and the checkboxes *Always open sessions in a new window*, *Slow paste*, *Always open sessions at 1:1*; the last entry opens this repo.
 * **"+" at the end of the tab strip**: remembered sessions, local-access devices, *Choose from device list...*.
 * **Toolbar button next to fullscreen** (inside the KVM page): resize the window to the KVM resolution. If the resolution doesn't fit on the screen the window takes the largest same-aspect size and tells you.
 * **Ctrl+Alt+V** (default): types your local clipboard into the remote machine. Failures (empty clipboard, device refused, no session focused) show as Windows notifications.
