@@ -551,10 +551,18 @@ function glAddTab(dst, params) {
     dst.__glKind = "tab";
     remoteWindow = dst;
   }
+  const existed = dst.__glReady && dst.__glDevices.size > 0;
   glDeliverOpenRemotePage(dst, params);
   if (dst.isMinimized()) dst.restore();
   dst.show();
   dst.focus();
+  // adding a tab to an already-showing window can leave the previous panel briefly
+  // painted on top; nudge a clean re-render once the new tab has mounted
+  if (existed) {
+    setTimeout(() => {
+      if (!dst.isDestroyed()) dst.webContents.send("glRepaint");
+    }, 250);
+  }
 }
 function glMoveDevice(deviceId, target) {
   const params = glDeviceParams.get(deviceId);
