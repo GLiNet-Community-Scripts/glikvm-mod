@@ -604,6 +604,36 @@ function glMergeWindows(src, dst) {
   } catch {
   }
 }
+// While a tab is being dragged, highlight the session window whose tab strip is under
+// the cursor, so the user sees where it will dock.
+const glDragHighlighted = new Set();
+function glSetDragHighlight(target) {
+  for (const w of glRemoteWindows) {
+    const on = w === target;
+    const was = glDragHighlighted.has(w);
+    if (on && !was) {
+      glDragHighlighted.add(w);
+      if (!w.isDestroyed()) w.webContents.send("glDragHighlight", true);
+    } else if (!on && was) {
+      glDragHighlighted.delete(w);
+      if (!w.isDestroyed()) w.webContents.send("glDragHighlight", false);
+    }
+  }
+}
+function glWindowUnderStrip(src, x, y) {
+  const STRIP = 44;
+  for (const dst of glRemoteWindows) {
+    if (dst === src || dst.isDestroyed()) continue;
+    const b = dst.getContentBounds();
+    if (x >= b.x && x <= b.x + b.width && y >= b.y && y <= b.y + STRIP) return dst;
+  }
+  return null;
+}
+function glOnTabDragOver(event, payload) {
+  const src = require$$0$2.BrowserWindow.fromWebContents(event.sender);
+  if (!src) return;
+  glSetDragHighlight(glWindowUnderStrip(src, Math.round(payload?.x), Math.round(payload?.y)));
+}
 // A tab was dragged and dropped (renderer reports the screen-space drop point).
 // Drop on another session window's tab strip -> move it there; drop elsewhere ->
 // tear it out into its own window; a lone tab just moves its window.
@@ -616,16 +646,13 @@ function glOnTabDragEnd(event, payload) {
   if (!deviceId || !Number.isFinite(x) || !Number.isFinite(y)) return;
   const params = glDeviceParams.get(deviceId);
   if (!params) return;
-  const STRIP = 44;
-  for (const dst of glRemoteWindows) {
-    if (dst === src || dst.isDestroyed()) continue;
-    const b = dst.getContentBounds();
-    if (x >= b.x && x <= b.x + b.width && y >= b.y && y <= b.y + STRIP) {
-      glDetachFromHost(src, deviceId);
-      glLog("tab dragged into another window", { deviceId });
-      glAddTab(dst, params);
-      return;
-    }
+  glSetDragHighlight(null);
+  const onto = glWindowUnderStrip(src, x, y);
+  if (onto) {
+    glDetachFromHost(src, deviceId);
+    glLog("tab dragged into another window", { deviceId });
+    glAddTab(onto, params);
+    return;
   }
   // dropped back on its own strip -> ignore
   const sb = src.getContentBounds();

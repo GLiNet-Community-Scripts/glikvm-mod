@@ -43,7 +43,7 @@ Other forms: `bun patch.ts build` (only produce `build/app`), `bun patch.ts inst
 
 ## Using it
 
-* **Rearranging sessions**: drag a tab out of the strip to tear it into its own window, or drop it on another window's tab strip to move it there; drag a whole session window onto another's tab strip to combine them; or use the tab right-click menu (*Move to its own window* / *Move into the main session window*).
+* **Rearranging sessions**: drag a tab out of the strip to tear it into its own window, or drop it on another window's tab strip to move it there (the target window's strip highlights while you hover, and the dragged tab lifts); drag a whole session window onto another's tab strip to combine them; or use the tab right-click menu (*Move to its own window* / *Move into the main session window*).
 * **Session tab right-click menu**: move to its own window / into the main window, paste local clipboard, resize to KVM resolution, and the checkboxes *Always open sessions in a new window*, *Slow paste*, *Always open sessions at 1:1*; the last entry opens this repo.
 * **"+" at the end of the tab strip**: remembered sessions, local-access devices, *Choose from device list...*.
 * **Toolbar button next to fullscreen** (inside the KVM page): resize the window to the KVM resolution. If the resolution doesn't fit on the screen the window takes the largest same-aspect size and tells you.
