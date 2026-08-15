@@ -379,7 +379,7 @@ function glShowTabMenu(event, payload) {
       click: (item) => store.set("remotePasteSlow", !!item.checked)
     },
     { type: "separator" },
-    { label: `ui-mod ${GL_MOD_VERSION} — about / source`, click: () => require$$0$2.shell.openExternal("__GL_REPO_URL__") }
+    { label: `ui-mod ${GL_MOD_VERSION} - about / source`, click: () => require$$0$2.shell.openExternal("__GL_REPO_URL__") }
   ];
   require$$0$2.Menu.buildFromTemplate(template).popup({ window: win });
 }

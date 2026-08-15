@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-// glikvm-mod — patch the GLKVM Windows desktop client (Electron) so sessions can
+// glikvm-mod - patch the GLKVM Windows desktop client (Electron) so sessions can
 // live in separate windows and the local clipboard can be pasted straight into
 // the remote machine.
 //
@@ -63,7 +63,7 @@ function build() {
     fs.rmSync(BUILD_APP, { recursive: true, force: true });
   } catch (e: any) {
     if (e.code !== "EBUSY" && e.code !== "EPERM") throw e;
-    // something (a shell?) has build/app as its cwd — move it aside and carry on
+    // something (a shell?) has build/app as its cwd - move it aside and carry on
     const aside = `${BUILD_APP}.old-${Date.now()}`;
     fs.renameSync(BUILD_APP, aside);
     try {
@@ -132,12 +132,12 @@ function install() {
       die(`cannot write to ${target} (${e.code}). Run this from an elevated (Administrator) shell, or use the default side-by-side install.`);
     }
     log(`done. Electron loads resources/app in preference to app.asar, so the stock GLKVM.exe now runs the mod.`);
-    log(`NOTE: after a GLKVM update, re-run 'bun patch.ts install --inplace' (or uninstall) — a stale resources/app would shadow the new app.asar.`);
+    log(`NOTE: after a GLKVM update, re-run 'bun patch.ts install --inplace' (or uninstall) - a stale resources/app would shadow the new app.asar.`);
     return;
   }
   log(`installing side-by-side -> ${DEST}`);
   fs.mkdirSync(DEST, { recursive: true });
-  // 1) stock binaries (Electron runtime, helpers, locales) — everything except the stock app payload
+  // 1) stock binaries (Electron runtime, helpers, locales) - everything except the stock app payload
   robocopy(SRC, DEST, ["/E", "/XF", "app.asar", "Uninstall GLKVM.exe", "/XD", "app.asar.unpacked", "app"]);
   // 2) patched app
   robocopy(BUILD_APP, path.join(DEST, "resources", "app"), ["/MIR"]);
@@ -145,7 +145,7 @@ function install() {
   makeShortcut(exe);
   log(`installed glikvm-mod ${MOD_VERSION} on GLKVM ${version}`);
   log(`run it:  bun patch.ts run   (or the "GLKVM (mod)" Start Menu entry, or ${exe})`);
-  log(`it shares login/settings with the stock client (same %APPDATA%\\gl-kvm). Quit the stock client first — only one instance can run.`);
+  log(`it shares login/settings with the stock client (same %APPDATA%\\gl-kvm). Quit the stock client first - only one instance can run.`);
 }
 
 function uninstall() {
@@ -171,7 +171,7 @@ function uninstall() {
 
 function run() {
   const exe = INPLACE ? path.join(SRC, "GLKVM.exe") : path.join(DEST, "GLKVM.exe");
-  if (!fs.existsSync(exe)) die(`${exe} not found — run 'bun patch.ts install' first`);
+  if (!fs.existsSync(exe)) die(`${exe} not found - run 'bun patch.ts install' first`);
   const child = Bun.spawn([exe, ...passthrough], { cwd: path.dirname(exe), stdio: ["ignore", "ignore", "ignore"], detached: true } as any);
   child.unref();
   log(`launched ${exe} ${passthrough.join(" ")}`.trim());
@@ -191,7 +191,7 @@ function status() {
     }
     const m = JSON.parse(fs.readFileSync(marker, "utf8"));
     const stale = fs.existsSync(asar) && sha256(asar) !== m.sourceAsarSha256;
-    log(`${label}: mod ${m.modVersion} built from GLKVM ${m.appVersion} at ${m.builtAt}${stale ? "  ⚠ stock app.asar changed since — re-run install" : ""}`);
+    log(`${label}: mod ${m.modVersion} built from GLKVM ${m.appVersion} at ${m.builtAt}${stale ? "  ⚠ stock app.asar changed since - re-run install" : ""}`);
   }
 }
 

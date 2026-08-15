@@ -218,7 +218,7 @@ const rendererPatches = (dir: string): Patch[] => {
 };
 
 // ---------------------------------------------------------------------------
-// renderer: home window — stamp the displayed version (the copy used for the
+// renderer: home window - stamp the displayed version (the copy used for the
 // update check is left alone so the updater keeps behaving)
 // ---------------------------------------------------------------------------
 function findHomeBundle(dir: string): string {
