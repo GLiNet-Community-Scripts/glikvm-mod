@@ -153,7 +153,7 @@ const GL_FIT_BUTTON_INJECT = `(() => {
     clone.id = "gl-mod-fit";
     const span = clone.querySelector("span");
     if (span) {
-      // filled shapes in the SVG namespace, like the sprite icons: a frame with "1:1" inside
+      // SVG built in the SVG namespace; the original icon attributes are copied so the scoped .gl-icon CSS applies
       const NS = "http://www.w3.org/2000/svg";
       const svg = document.createElementNS(NS, "svg");
       const orig = span.querySelector("svg");
@@ -163,19 +163,21 @@ const GL_FIT_BUTTON_INJECT = `(() => {
       svg.setAttribute("aria-hidden", "true");
       svg.style.width = "1em";
       svg.style.height = "1em";
+      // rounded square with two diagonal arrows (expand), thin strokes like the fullscreen glyph
       const shapes = [
-        ["path", { d: "M4 5h16a1.5 1.5 0 0 1 1.5 1.5v11A1.5 1.5 0 0 1 20 19H4a1.5 1.5 0 0 1-1.5-1.5v-11A1.5 1.5 0 0 1 4 5zm0 1.5v11h16v-11H4z", "fill-rule": "evenodd" }],
-        ["rect", { x: "7.4", y: "9", width: "1.5", height: "6" }],
-        ["path", { d: "M5.9 10.6L8.9 9v1.4z" }],
-        ["rect", { x: "11.25", y: "10.3", width: "1.5", height: "1.5" }],
-        ["rect", { x: "11.25", y: "13.1", width: "1.5", height: "1.5" }],
-        ["rect", { x: "15.4", y: "9", width: "1.5", height: "6" }],
-        ["path", { d: "M13.9 10.6L16.9 9v1.4z" }]
+        ["rect", { x: "3.25", y: "3.25", width: "17.5", height: "17.5", rx: "3.5" }],
+        ["path", { d: "M12.8 11.2L17.4 6.6M13.4 6.6h4v4" }],
+        ["path", { d: "M11.2 12.8L6.6 17.4M6.6 13.4v4h4" }]
       ];
       for (const [tag, attrs] of shapes) {
         const el = document.createElementNS(NS, tag);
         for (const k in attrs) el.setAttribute(k, attrs[k]);
-        el.setAttribute("fill", "currentColor");
+        el.setAttribute("fill", "none");
+        el.setAttribute("stroke", "currentColor");
+        el.setAttribute("stroke-width", "1.5");
+        el.setAttribute("stroke-linecap", "round");
+        el.setAttribute("stroke-linejoin", "round");
+        el.style.fill = "none";
         svg.appendChild(el);
       }
       span.textContent = "";
