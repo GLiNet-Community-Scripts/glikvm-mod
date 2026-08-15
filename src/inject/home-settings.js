@@ -20,7 +20,11 @@ const GL_MOD_I18N = {
   fit: "Resize window to KVM resolution when a session opens",
   fitDesc: "Sizes the session window so the remote screen is shown 1:1 (also available any time via the 1:1 button next to fullscreen)",
   fitOff: "Off",
-  fitOn: "On"
+  fitOn: "On",
+  start: "Start screen",
+  startDesc: "Which page the app opens on at startup",
+  startRemote: "Remote Access",
+  startLocal: "Local Access"
 };
 try {
   for (const loc of ["en", "zh"]) i18n.global.mergeLocaleMessage(loc, { uimod: GL_MOD_I18N });
@@ -39,6 +43,8 @@ const GlModSettings = /* @__PURE__ */ defineComponent({
         pasteSlowRaw.value = v === "slow";
       }
     });
+    const startScreen = useStorageRef("startScreen", "remote");
+    const StartOptions = [new GlMenuItem("remote", "uimod.startRemote"), new GlMenuItem("local", "uimod.startLocal")];
     const fitRaw = useStorageRef("remoteFitOnOpen");
     const fitOnOpen = computed({
       get: () => fitRaw.value ? "on" : "off",
@@ -123,6 +129,7 @@ const GlModSettings = /* @__PURE__ */ defineComponent({
           createVNode(BaseText, { type: "caption-m", class: "font-[600]" }, { default: () => [createTextVNode(t("uimod.title"))] })
         ]),
         createVNode(Wo, { divider1: "", horizontal: "", gutter: 8 }),
+        row("uimod.start", "uimod.startDesc", dropdown(startScreen, StartOptions)),
         row("uimod.openIn", "uimod.openInDesc", dropdown(openMode, OpenModeOptions)),
         row("uimod.hotkey", "uimod.hotkeyDesc", hotkeyControl),
         row("uimod.speed", "uimod.speedDesc", dropdown(pasteSpeed, PasteSpeedOptions)),

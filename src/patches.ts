@@ -131,6 +131,7 @@ const mainPatches: Patch[] = [
           "    remotePasteSlow: false,\n",
           "    recentSessions: [],\n",
           "    remoteFitOnOpen: false,\n",
+          '    startScreen: "remote",\n',
           "    deviceImages: [],\n",
         ].join(""),
         "main.store.defaults",
@@ -290,6 +291,36 @@ function findHomeBundle(dir: string): string {
 }
 
 const homePatches = (dir: string): Patch[] => [
+  {
+    file: findHomeBundle(dir),
+    what: "home: start screen setting (Remote Access / Local Access) via a one-shot router guard",
+    apply: (src) =>
+      replaceOnce(
+        src,
+        "router.beforeEach((to) => {\n  if (to.meta.auth) {\n",
+        [
+          "// glikvm-mod: honour the 'start screen' setting on the very first navigation only",
+          "let glModStartHandled = false;",
+          "router.beforeEach(async (to, from) => {",
+          "  if (glModStartHandled || from.matched.length !== 0) return true;",
+          "  glModStartHandled = true;",
+          "  try {",
+          "    const info = await window.utils.getStoreInfo();",
+          "    const startScreen = info && info.startScreen;",
+          '    window.utils.logInfo("[glikvm-mod] first navigation", to.fullPath, "startScreen=" + startScreen);',
+          '    if (to.path !== "/" && to.path !== "/deviceList") return true;',
+          '    if (startScreen === "local") return "/localAccess";',
+          "  } catch {",
+          "  }",
+          "  return true;",
+          "});",
+          "router.beforeEach((to) => {",
+          "  if (to.meta.auth) {",
+          "",
+        ].join("\n"),
+        "home.startScreen",
+      ),
+  },
   {
     file: findHomeBundle(dir),
     what: "home: add 'Sessions (ui-mod)' section to General Settings (open mode, paste hotkey, paste speed)",
