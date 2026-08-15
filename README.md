@@ -13,7 +13,17 @@ Patches for the **GLKVM Windows desktop client** (`C:\Program Files\GLKVM`, v1.5
 
 Everything is applied to a **side-by-side copy** in `%LOCALAPPDATA%\Programs\GLKVM-mod` - the stock install is never touched, no admin rights needed, and uninstalling is one command. Login, device list and settings are shared with the stock client (same `%APPDATA%\gl-kvm`), so it is a drop-in replacement; just quit the stock client first (only one instance can run at a time - a second one hands off to the first).
 
+## Requirements
+
+* Windows 10/11 with the stock GLKVM desktop client installed (default `C:\Program Files\GLKVM`, tested with 1.5.0). Get it from https://glkvm.com if you don't have it.
+* [Bun](https://bun.sh) 1.x (the JavaScript runtime that runs the patch script; Node.js is not needed). Install it with `powershell -c "irm bun.sh/install.ps1 | iex"` (or `winget install Oven-sh.Bun`, or `npm i -g bun`), then open a new terminal so `bun` is on your PATH.
+* No admin rights: the default install writes only to `%LOCALAPPDATA%\Programs\GLKVM-mod` and your Start Menu.
+
+## Install
+
 ```powershell
+git clone https://github.com/emaspa/glikvm-mod.git
+cd glikvm-mod
 bun install
 bun patch.ts install        # build + install side-by-side copy + Start Menu entry "GLKVM (mod)"
 bun patch.ts run            # launch it
