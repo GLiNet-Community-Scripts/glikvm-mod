@@ -145,7 +145,7 @@ function install() {
   makeShortcut(exe);
   log(`installed glikvm-mod ${MOD_VERSION} on GLKVM ${version}`);
   log(`run it:  bun patch.ts run   (or the "GLKVM (mod)" Start Menu entry, or ${exe})`);
-  log(`it shares login/settings with the stock client (same %APPDATA%\\gl-kvm). Quit the stock client first - only one instance can run.`);
+  log(`it shares login/settings with the stock client (same %APPDATA%\\gl-kvm). If the stock client is running you will be asked to close it.`);
 }
 
 function uninstall() {

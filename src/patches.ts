@@ -91,6 +91,29 @@ const mainPatches: Patch[] = [
   },
   {
     file: "out/main/index.js",
+    what: "main: offer to close the stock client instead of silently quitting on single-instance conflict",
+    apply: (src) =>
+      replaceOnce(
+        src,
+        [
+          "const gotTheLock = require$$0$2.app.requestSingleInstanceLock();",
+          "if (!gotTheLock) {",
+          "  require$$0$2.app.quit();",
+          "} else {",
+          "",
+        ].join("\n"),
+        [
+          "const gotTheLock = require$$0$2.app.requestSingleInstanceLock();",
+          "if (!gotTheLock) {",
+          "  glHandleInstanceConflict();",
+          "} else {",
+          "",
+        ].join("\n"),
+        "main.singleInstance",
+      ),
+  },
+  {
+    file: "out/main/index.js",
     what: "main: add store defaults (remoteOpenMode, remotePasteHotkey, remotePasteSlow)",
     apply: (src) =>
       replaceOnce(

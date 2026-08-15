@@ -383,3 +383,70 @@ function glShowTabMenu(event, payload) {
   ];
   require$$0$2.Menu.buildFromTemplate(template).popup({ window: win });
 }
+// --- single-instance conflict with the stock client -------------------------
+// Both builds share %APPDATA%\gl-kvm, so only one can run. Stock behaviour is to
+// hand off to whichever is running and quit silently, which makes launching the
+// mod while the stock client sits in the tray look like "the mod is not patched".
+function glListGlkvmProcesses() {
+  try {
+    const out = require$$0$3.execFileSync(
+      "powershell.exe",
+      [
+        "-NoProfile",
+        "-NonInteractive",
+        "-Command",
+        "Get-CimInstance Win32_Process -Filter \"Name='GLKVM.exe' or Name='win-key-blocker.exe'\" | ForEach-Object { $_.ProcessId.ToString() + '|' + $_.ExecutablePath + '|' + $_.CommandLine }"
+      ],
+      { encoding: "utf8", windowsHide: true, timeout: 15e3 }
+    );
+    return out.split(/\r?\n/).map((l) => l.trim()).filter(Boolean).map((l) => {
+      const [pid, exe, ...rest] = l.split("|");
+      return { pid: Number(pid), exe: exe || "", cmd: rest.join("|") };
+    });
+  } catch (e) {
+    glWarn("process list failed", String(e));
+    return [];
+  }
+}
+function glHandleInstanceConflict() {
+  const app = require$$0$2.app;
+  app.whenReady().then(() => {
+    const me = process.execPath.toLowerCase();
+    const procs = glListGlkvmProcesses();
+    const foreignMains = procs.filter(
+      (p) => p.pid !== process.pid && p.exe && /glkvm\.exe$/i.test(p.exe) && p.exe.toLowerCase() !== me && !/--type=/.test(p.cmd)
+    );
+    if (!foreignMains.length) {
+      app.quit();
+      return;
+    }
+    const otherDir = require$$2.dirname(foreignMains[0].exe);
+    const choice = require$$0$2.dialog.showMessageBoxSync({
+      type: "question",
+      title: "GLKVM ui-mod",
+      message: "Another GLKVM is already running",
+      detail: `The GLKVM in\n${otherDir}\nis running (probably the stock client in the tray). Both share the same profile, so only one can run at a time.\n\nClose it and start GLKVM ui-mod instead? Sessions open in the other client will be closed.`,
+      buttons: ["Close it and start ui-mod", "Cancel"],
+      defaultId: 0,
+      cancelId: 1,
+      noLink: true
+    });
+    if (choice !== 0) {
+      app.quit();
+      return;
+    }
+    const otherDirLower = otherDir.toLowerCase();
+    const victims = procs.filter((p) => p.pid !== process.pid && p.exe && require$$2.dirname(p.exe).toLowerCase() === otherDirLower);
+    for (const v of victims) {
+      try {
+        process.kill(v.pid);
+      } catch (e) {
+        glWarn("could not stop process", v.pid, String(e));
+      }
+    }
+    setTimeout(() => {
+      app.relaunch();
+      app.exit(0);
+    }, 1500);
+  });
+}
