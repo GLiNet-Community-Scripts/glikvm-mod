@@ -137,6 +137,50 @@ async function glFitWindowToKvm(win, deviceId, quiet) {
   if (!quiet && !fits) glNotify(`${m.vw}x${m.vh} does not fit on this screen; the window was sized to the largest matching aspect ratio.`);
   return true;
 }
+// Adds a "1:1" item next to the fullscreen button inside the device UI (cross-origin
+// iframe, so this runs from the main process via webFrameMain.executeJavaScript).
+const GL_FIT_BUTTON_INJECT = `(() => {
+  if (window.__glModFitInjected) return "already";
+  window.__glModFitInjected = true;
+  const ensure = () => {
+    if (document.getElementById("gl-mod-fit")) return;
+    const use = Array.from(document.querySelectorAll("use")).find((u) => (u.getAttribute("xlink:href") || u.getAttribute("href")) === "#gl-kvm-fullscreen");
+    if (!use) return;
+    const item = use.closest(".action-item");
+    const wrap = item && item.parentElement;
+    if (!wrap) return;
+    const clone = wrap.cloneNode(true);
+    clone.id = "gl-mod-fit";
+    const span = clone.querySelector("span");
+    if (span) {
+      span.textContent = "1:1";
+      span.style.fontSize = "12px";
+      span.style.fontWeight = "600";
+      span.style.letterSpacing = "0.5px";
+    }
+    const btn = clone.querySelector(".action-item") || clone;
+    btn.title = "Resize window to KVM resolution (1:1)";
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      window.parent.postMessage(JSON.stringify({ glMod: "fit" }), "*");
+    });
+    wrap.insertAdjacentElement("afterend", clone);
+  };
+  ensure();
+  new MutationObserver(() => ensure()).observe(document.documentElement, { childList: true, subtree: true });
+  return "injected";
+})()`;
+function glInjectFitButton(frameProcessId, frameRoutingId) {
+  try {
+    const frame = require$$0$2.webFrameMain.fromId(frameProcessId, frameRoutingId);
+    if (!frame) return;
+    const origin = new URL(frame.url).origin;
+    if (!glDeviceOrigins.has(origin)) return;
+    frame.executeJavaScript(GL_FIT_BUTTON_INJECT, true).then((r) => glLog("fit button", r, origin)).catch((e) => glWarn("fit button inject failed", String(e)));
+  } catch {
+  }
+}
 function glScheduleFitOnOpen(win, deviceId) {
   if (!store.get("remoteFitOnOpen")) return;
   let tries = 0;
@@ -332,6 +376,9 @@ function glCreateRemoteWindow(kind, params, geometry) {
     win.__glPending = [];
   });
   win.webContents.on("before-input-event", (event, input) => glOnRemoteInput(win, event, input));
+  win.webContents.on("did-frame-finish-load", (_event, isMainFrame, frameProcessId, frameRoutingId) => {
+    if (!isMainFrame) glInjectFitButton(frameProcessId, frameRoutingId);
+  });
   return win;
 }
 function glDeliverOpenRemotePage(win, params) {

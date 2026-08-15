@@ -18,7 +18,7 @@ const GL_MOD_I18N = {
   speedNormal: "Normal",
   speedSlow: "Slow",
   fit: "Resize window to KVM resolution when a session opens",
-  fitDesc: "Sizes the session window so the remote screen is shown 1:1 (also available any time via the 1:1 button in the session window)",
+  fitDesc: "Sizes the session window so the remote screen is shown 1:1 (also available any time via the 1:1 button next to fullscreen)",
   fitOff: "Off",
   fitOn: "On"
 };
