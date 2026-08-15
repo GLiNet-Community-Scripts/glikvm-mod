@@ -445,6 +445,14 @@ function openRemoteWindow(rawParams, opts = {}) {
     requested = glPendingHost.win;
   }
   glPendingHost = null;
+  if (requested && !requested.isDestroyed() && glRemoteWindows.has(requested) && !forcedTarget && glOpenMode() === "window") {
+    // "+" pressed while "always open sessions in a new window" is on: honour the mode,
+    // sized like the window the request came from
+    glLog("opening in a new window (mode=window) for requesting window", id);
+    const win2 = glCreateRemoteWindow("window", params, glGeometryFrom(requested, 40));
+    glDeliverOpenRemotePage(win2, params);
+    return win2;
+  }
   if (requested && !requested.isDestroyed() && glRemoteWindows.has(requested)) {
     glLog("opening in requesting window", id);
     if (requested.isMinimized()) requested.restore();
