@@ -35,7 +35,7 @@ All three are in Settings → General → *Sessions (ui-mod)* (and the first two
 | `remotePasteSlow` | `false` | send `slow=1` to the device (longer inter-key delay) |
 | `remotePasteHotkey` | `"Ctrl+Alt+V"` | accelerator-style, e.g. `"Ctrl+Shift+V"`, `"CmdOrCtrl+Alt+P"`, `"F9"` |
 
-## What the client actually is (why these were the fixable bits)
+## What the client actually is (why these were the patchable bits)
 
 The desktop client is a thin **Electron 34** wrapper (unminified `app.asar`, ASAR-integrity fuse off, `nodeIntegration: true`). The main process keeps **one** singleton "remote" `BrowserWindow`; opening any device just IPCs `openRemotePage` to that window, whose Vue renderer adds an antd tab containing an `<iframe src="https://<device>">` - i.e. the device's own web UI, exactly what you'd get in a browser. There is no clipboard logic in the client at all; "Paste" lives inside the device UI and is implemented (as on PiKVM, whose `kvmd` GL-iNet forked - [gl-inet/glkvm](https://github.com/gl-inet/glkvm)) by *typing* the text over USB HID via `POST /api/hid/print`.
 
