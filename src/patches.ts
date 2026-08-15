@@ -353,7 +353,7 @@ const homePatches = (dir: string): Patch[] => [
           [
             '          createBaseVNode("div", { class: "h-[20px] mt-[12px] flex-start" }, [',
             '            createVNode(_component_BaseText, { type: "footnote-m", variant: "level2" }, {',
-            `              default: withCtx(() => [createTextVNode("ui-mod ${MOD_VERSION} installed \u00b7")]),`,
+            `              default: withCtx(() => [createTextVNode("ui-mod ${MOD_VERSION} installed \u00a0\u00b7")]),`,
             "              _: 1",
             "            }),",
             `            createVNode(_component_BaseText, { class: "text-primary pointer", variant: "level2", style: { marginLeft: "6px" }, onClick: () => window.open("${REPO_URL}") }, {`,

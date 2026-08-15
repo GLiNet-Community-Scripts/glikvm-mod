@@ -74,3 +74,7 @@ This repository contains only the patch tooling and the injected code - no GL-iN
 * Auth for paste relies on the client having logged into that device UI once (it stores the token and sets the cookie). If a device replies 401 you'll get a notification saying so - log in inside the session, then retry.
 * Ctrl+Alt+V was chosen so Ctrl+Shift+V still reaches remote terminals. AltGr+V on layouts where that types a character will be swallowed - change `remotePasteHotkey` in that case.
 * Tested against client 1.5.0 / Electron 34.5.8 on Windows 11 with an RM10 on firmware V1.10.0 (window management verified interactively; hotkey path verified to the network layer against a dead address, and `/api/hid/print` confirmed present on the device - do one real paste to confirm auth on your firmware).
+
+## License
+
+MIT, see [LICENSE](LICENSE).

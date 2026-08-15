@@ -153,13 +153,33 @@ const GL_FIT_BUTTON_INJECT = `(() => {
     clone.id = "gl-mod-fit";
     const span = clone.querySelector("span");
     if (span) {
-      // same 1em box and currentColor as the neighbouring gl-icon glyphs
-      span.innerHTML = '<svg class="gl-icon" viewBox="0 0 24 24" aria-hidden="true" style="fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round">'
-        + '<rect x="3" y="4.5" width="18" height="15" rx="2"/>'
-        + '<path d="M7.5 15V9l-1.3 1"/>'
-        + '<path d="M16.5 15V9l-1.3 1"/>'
-        + '<path d="M12 10.3v.01M12 13.7v.01" stroke-width="2"/>'
-        + '</svg>';
+      // filled shapes in the SVG namespace, like the sprite icons: a frame with "1:1" inside
+      const NS = "http://www.w3.org/2000/svg";
+      const svg = document.createElementNS(NS, "svg");
+      const orig = span.querySelector("svg");
+      if (orig) for (const a of Array.from(orig.attributes)) svg.setAttribute(a.name, a.value); // keeps class + Vue scope attrs, so the scoped .gl-icon sizing applies
+      svg.setAttribute("class", "gl-icon");
+      svg.setAttribute("viewBox", "0 0 24 24");
+      svg.setAttribute("aria-hidden", "true");
+      svg.style.width = "1em";
+      svg.style.height = "1em";
+      const shapes = [
+        ["path", { d: "M4 5h16a1.5 1.5 0 0 1 1.5 1.5v11A1.5 1.5 0 0 1 20 19H4a1.5 1.5 0 0 1-1.5-1.5v-11A1.5 1.5 0 0 1 4 5zm0 1.5v11h16v-11H4z", "fill-rule": "evenodd" }],
+        ["rect", { x: "7.4", y: "9", width: "1.5", height: "6" }],
+        ["path", { d: "M5.9 10.6L8.9 9v1.4z" }],
+        ["rect", { x: "11.25", y: "10.3", width: "1.5", height: "1.5" }],
+        ["rect", { x: "11.25", y: "13.1", width: "1.5", height: "1.5" }],
+        ["rect", { x: "15.4", y: "9", width: "1.5", height: "6" }],
+        ["path", { d: "M13.9 10.6L16.9 9v1.4z" }]
+      ];
+      for (const [tag, attrs] of shapes) {
+        const el = document.createElementNS(NS, tag);
+        for (const k in attrs) el.setAttribute(k, attrs[k]);
+        el.setAttribute("fill", "currentColor");
+        svg.appendChild(el);
+      }
+      span.textContent = "";
+      span.appendChild(svg);
     }
     const btn = clone.querySelector(".action-item") || clone;
     btn.title = "Resize window to KVM resolution (1:1)";
