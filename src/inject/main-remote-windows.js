@@ -629,10 +629,57 @@ function glWindowUnderStrip(src, x, y) {
   }
   return null;
 }
+// A small frameless pill that follows the cursor while a drag would tear a tab out into
+// a new window, so the gesture reads even out over the desktop.
+let glDragGhost = null;
+let glDragGhostName = null;
+function glGhostHtml(name) {
+  const label = `New window · ${String(name || "").replace(/[<>&]/g, "")}`;
+  return "data:text/html;charset=utf-8," + encodeURIComponent(
+    '<meta charset="utf-8"><body style="margin:0;overflow:hidden;background:transparent">' +
+    '<div style="display:inline-flex;align-items:center;gap:6px;font:600 12px/1 Inter,Segoe UI,system-ui,sans-serif;color:#fff;' +
+    'background:rgba(28,30,36,.94);border:1px solid var(--b,#5b8cff);border-radius:8px;padding:7px 11px;white-space:nowrap;' +
+    'box-shadow:0 6px 20px rgba(0,0,0,.45)">' +
+    '<span style="font-size:14px">↗</span><span>' + label + "</span></div></body>"
+  );
+}
+function glShowDragGhost(x, y, name) {
+  if (!glDragGhost || glDragGhost.isDestroyed()) {
+    glDragGhost = new require$$0$2.BrowserWindow({
+      width: 260, height: 40, show: false, frame: false, transparent: true, hasShadow: false,
+      resizable: false, movable: false, minimizable: false, maximizable: false, skipTaskbar: true,
+      focusable: false, alwaysOnTop: true, acceptFirstMouse: false,
+      webPreferences: { sandbox: true }
+    });
+    glDragGhost.setIgnoreMouseEvents(true);
+    glDragGhostName = null;
+  }
+  if (glDragGhostName !== name) {
+    glDragGhostName = name;
+    glDragGhost.loadURL(glGhostHtml(name));
+  }
+  glDragGhost.setPosition(Math.round(x) + 14, Math.round(y) + 16);
+  if (!glDragGhost.isVisible()) glDragGhost.showInactive();
+}
+function glHideDragGhost() {
+  if (glDragGhost && !glDragGhost.isDestroyed() && glDragGhost.isVisible()) glDragGhost.hide();
+}
+function glDestroyDragGhost() {
+  if (glDragGhost && !glDragGhost.isDestroyed()) glDragGhost.destroy();
+  glDragGhost = null;
+  glDragGhostName = null;
+}
 function glOnTabDragOver(event, payload) {
   const src = require$$0$2.BrowserWindow.fromWebContents(event.sender);
   if (!src) return;
-  glSetDragHighlight(glWindowUnderStrip(src, Math.round(payload?.x), Math.round(payload?.y)));
+  const x = Math.round(payload?.x);
+  const y = Math.round(payload?.y);
+  const target = glWindowUnderStrip(src, x, y);
+  glSetDragHighlight(target);
+  const sb = src.getContentBounds();
+  const overOwnStrip = x >= sb.x && x <= sb.x + sb.width && y >= sb.y && y <= sb.y + 44;
+  if (target || overOwnStrip || (src.__glDevices?.size || 0) <= 1) glHideDragGhost();
+  else glShowDragGhost(x, y, payload?.name);
 }
 // A tab was dragged and dropped (renderer reports the screen-space drop point).
 // Drop on another session window's tab strip -> move it there; drop elsewhere ->
@@ -647,6 +694,7 @@ function glOnTabDragEnd(event, payload) {
   const params = glDeviceParams.get(deviceId);
   if (!params) return;
   glSetDragHighlight(null);
+  glDestroyDragGhost();
   const onto = glWindowUnderStrip(src, x, y);
   if (onto) {
     glDetachFromHost(src, deviceId);
