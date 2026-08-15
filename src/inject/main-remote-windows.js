@@ -154,9 +154,11 @@ const GL_FIT_BUTTON_INJECT = `(() => {
     const span = clone.querySelector("span");
     if (span) {
       span.textContent = "1:1";
-      span.style.fontSize = "12px";
-      span.style.fontWeight = "600";
-      span.style.letterSpacing = "0.5px";
+      span.style.fontSize = "17px";
+      span.style.fontWeight = "700";
+      span.style.lineHeight = "1";
+      span.style.letterSpacing = "0";
+      span.style.fontFamily = "Inter, -apple-system, Segoe UI, sans-serif";
     }
     const btn = clone.querySelector(".action-item") || clone;
     btn.title = "Resize window to KVM resolution (1:1)";
