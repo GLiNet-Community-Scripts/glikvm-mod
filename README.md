@@ -12,7 +12,7 @@ Patches for the **GLKVM Windows desktop client** (`C:\Program Files\GLKVM`, v1.5
 | New windows inherit geometry | a moved/Shift-clicked session opens at the same size (and maximized state) as the window it came from, offset by 40 px so both stay visible |
 | Takeover dialog | starting the mod while the stock client is running (tray) asks to close it and take over, instead of silently handing off to the stock window |
 | Visible mod stamp | home footer shows `V1.5.0 release1 · ui-mod 0.1.1`, the About page shows *ui-mod installed* with a link here (the version used by the update check is untouched) |
-| **Start screen** | choose whether the app opens on Remote Access or Local Access |
+| **Start screen** | choose whether the app opens on Remote Access or Local Access; Back from Settings returns to whichever access page you were on |
 | **Settings UI** | Settings → General → *Sessions (ui-mod)*: start screen, open mode, paste hotkey (click, press keys), paste speed, resize on open |
 
 Everything is applied to a **side-by-side copy** in `%LOCALAPPDATA%\Programs\GLKVM-mod` - the stock install is never touched, no admin rights needed, and uninstalling is one command. Login, device list and settings are shared with the stock client (same `%APPDATA%\gl-kvm`), so it is a drop-in replacement. Only one of the two can run at a time: if the stock client is still running (for example minimized to the tray) when you start the mod, the mod asks whether to close it and take over.
