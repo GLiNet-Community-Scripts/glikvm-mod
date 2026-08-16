@@ -1,6 +1,6 @@
 # glikvm-mod
 
-Patches for the **GLKVM Windows desktop client** (GL-iNet's Electron app for the Comet / RM1 / RM10 KVMs, `C:\Program Files\GLKVM`, tested with 1.5.0). It shows up in the app as **ui-mod 0.1.5**.
+Patches for the **GLKVM Windows desktop client** (GL-iNet's Electron app for the Comet / RM1 / RM10 KVMs, `C:\Program Files\GLKVM`, tested with 1.5.0). It shows up in the app as **ui-mod 0.1.6**.
 
 ## What it adds
 
@@ -16,7 +16,7 @@ Patches for the **GLKVM Windows desktop client** (GL-iNet's Electron app for the
 | Window titles = device name | detached windows (and the main session window, for its active tab) are titled `<device> - GLKVM`, so Alt-Tab and the taskbar are usable |
 | New windows inherit geometry | a moved or Shift-clicked session opens at the same size (and maximized state) as the window it came from, offset by 40 px so both stay visible |
 | Takeover dialog | starting the mod while the stock client is running (for example in the tray) asks whether to close it and take over, instead of silently handing off to the stock window |
-| Visible mod stamp | home footer shows `V1.5.0 release1 · ui-mod 0.1.5`; the About page shows *ui-mod 0.1.5 installed* with a link to this repo; the tab menu footer opens it too (the version used by the update check is untouched) |
+| Visible mod stamp | home footer shows `V1.5.0 release1 · ui-mod 0.1.6`; the About page shows *ui-mod 0.1.6 installed* with a link to this repo; the tab menu footer opens it too (the version used by the update check is untouched) |
 | **Settings UI** | Settings → General → *Sessions (ui-mod)*: start screen, open mode, paste hotkey (click, then press the keys), paste speed, always 1:1 |
 
 Everything is applied to a **side-by-side copy** in `%LOCALAPPDATA%\Programs\GLKVM-mod`: the stock install is never touched, no admin rights are needed, and uninstalling is one command. Login, device list and settings are shared with the stock client (same `%APPDATA%\gl-kvm`), so it is a drop-in replacement. Only one of the two can run at a time; if the stock client is still running when you start the mod, the mod asks whether to close it and take over.
@@ -91,6 +91,10 @@ This repository contains only the patch tooling and the injected code; no GL-iNe
 * Tested against client 1.5.0 / Electron 34.5.8 on Windows 11 with four RM10 units on firmware V1.10.0.
 
 ## Changelog
+
+**0.1.6**
+
+* Fix: tearing a tab out by dragging it away from the strip threw `ReferenceError: STRIP is not defined` (the strip height was only defined inside two other functions); it is now one module-level `GL_STRIP` used by every drag/drop check.
 
 **0.1.5**
 

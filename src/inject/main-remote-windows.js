@@ -21,6 +21,7 @@ let glWindowSeq = 0;
 let glPasteInFlight = false;
 let glPendingHost = null;
 const GL_RECENT_MAX = 12;
+const GL_STRIP = 44; // height (px) of a session window's tab strip: the drop zone for tab / window drags
 function glRecentSessions() {
   const list = store.get("recentSessions");
   return Array.isArray(list) ? list.filter((p) => p && p.device && p.device.id && p.channelIp) : [];
@@ -629,11 +630,10 @@ function glSetDragHighlight(target) {
   }
 }
 function glWindowUnderStrip(src, x, y) {
-  const STRIP = 44;
   for (const dst of glRemoteWindows) {
     if (dst === src || dst.isDestroyed()) continue;
     const b = dst.getContentBounds();
-    if (x >= b.x && x <= b.x + b.width && y >= b.y && y <= b.y + STRIP) return dst;
+    if (x >= b.x && x <= b.x + b.width && y >= b.y && y <= b.y + GL_STRIP) return dst;
   }
   return null;
 }
@@ -685,7 +685,7 @@ function glOnTabDragOver(event, payload) {
   const target = glWindowUnderStrip(src, x, y);
   glSetDragHighlight(target);
   const sb = src.getContentBounds();
-  const overOwnStrip = x >= sb.x && x <= sb.x + sb.width && y >= sb.y && y <= sb.y + 44;
+  const overOwnStrip = x >= sb.x && x <= sb.x + sb.width && y >= sb.y && y <= sb.y + GL_STRIP;
   if (target || overOwnStrip || (src.__glDevices?.size || 0) <= 1) glHideDragGhost();
   else glShowDragGhost(x, y, payload?.name);
 }
@@ -712,7 +712,7 @@ function glOnTabDragEnd(event, payload) {
   }
   // dropped back on its own strip -> ignore
   const sb = src.getContentBounds();
-  if (x >= sb.x && x <= sb.x + sb.width && y >= sb.y && y <= sb.y + STRIP) return;
+  if (x >= sb.x && x <= sb.x + sb.width && y >= sb.y && y <= sb.y + GL_STRIP) return;
   // lone tab -> just move the window to the drop point
   if ((src.__glDevices?.size || 0) <= 1) {
     glSuppressMoves(src);
@@ -730,11 +730,10 @@ function glOnWindowMoved(win) {
   if (Date.now() < (win.__glSuppressMoveUntil || 0)) return;
   if (!win.__glDevices || win.__glDevices.size === 0) return;
   const pt = require$$0$2.screen.getCursorScreenPoint();
-  const STRIP = 44;
   for (const dst of glRemoteWindows) {
     if (dst === win || dst.isDestroyed()) continue;
     const b = dst.getContentBounds();
-    if (pt.x >= b.x && pt.x <= b.x + b.width && pt.y >= b.y && pt.y <= b.y + STRIP) {
+    if (pt.x >= b.x && pt.x <= b.x + b.width && pt.y >= b.y && pt.y <= b.y + GL_STRIP) {
       glMergeWindows(win, dst);
       return;
     }
