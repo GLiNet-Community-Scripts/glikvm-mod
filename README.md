@@ -1,6 +1,6 @@
 # glikvm-mod
 
-Patches for the **GLKVM Windows desktop client** (GL-iNet's Electron app for the Comet / RM1 / RM10 KVMs, `C:\Program Files\GLKVM`, tested with 1.5.0). It shows up in the app as **ui-mod 0.1.6**.
+Patches for the **GLKVM Windows desktop client** (GL-iNet's Electron app for the Comet / RM1 / RM10 KVMs, `C:\Program Files\GLKVM`, tested with 1.5.0 and 1.5.1). It shows up in the app as **ui-mod 0.1.6**.
 
 ## What it adds
 
@@ -11,19 +11,20 @@ Patches for the **GLKVM Windows desktop client** (GL-iNet's Electron app for the
 | **"+" new session button** | at the end of the tab strip, like a browser's new-tab button: lists sessions you opened before (last 12, remembered across restarts) and your local-access devices, or *Choose from device list...* which raises the home window and routes the next device you click into that session window as a new tab (or a new window, in separate-window mode) |
 | **Session tab right-click menu** | per tab: move to its own window / into the main window, paste the local clipboard, resize the window to the KVM resolution, plus the toggles *Always open sessions in a new window*, *Slow paste*, *Always open sessions at 1:1*, and a link to this repo |
 | **Paste local clipboard into the remote machine** | `Ctrl+Alt+V` while a session window is focused (hotkey configurable) · or right-click a tab → *Paste local clipboard into "..."* · optional *Slow* paste speed for targets that drop characters |
+| **Remember session passwords** | opt-in: save each device's login password and fill it in automatically. A *Remember my password* checkbox is added to the device login screen; the password is captured only after a successful login and stored encrypted with the OS keychain (Windows DPAPI, tied to your Windows account) - never in plaintext, and not portable to another user or machine. Turning the setting off deletes every saved password |
 | **1:1 resize to KVM resolution** | button next to the fullscreen button in the session toolbar (rounded square with diagonal arrows), or tab right-click menu → *Resize window to KVM resolution*: sizes the window so the remote screen is shown pixel-for-pixel · setting *Always open sessions at 1:1 (KVM resolution)* does it automatically as soon as a session shows video |
 | **Start screen** | choose whether the app opens on Remote Access or Local Access; Back from Settings returns to whichever access page you were on (stock always went to Remote Access) |
 | Window titles = device name | detached windows (and the main session window, for its active tab) are titled `<device> - GLKVM`, so Alt-Tab and the taskbar are usable |
 | New windows inherit geometry | a moved or Shift-clicked session opens at the same size (and maximized state) as the window it came from, offset by 40 px so both stay visible |
 | Takeover dialog | starting the mod while the stock client is running (for example in the tray) asks whether to close it and take over, instead of silently handing off to the stock window |
-| Visible mod stamp | home footer shows `V1.5.0 release1 · ui-mod 0.1.6`; the About page shows *ui-mod 0.1.6 installed* with a link to this repo; the tab menu footer opens it too (the version used by the update check is untouched) |
+| Visible mod stamp | home footer shows `V1.5.1 release1 · ui-mod 0.1.6`; the About page shows *ui-mod 0.1.6 installed* with a link to this repo; the tab menu footer opens it too (the version used by the update check is untouched) |
 | **Settings UI** | Settings → General → *Sessions (ui-mod)*: start screen, open mode, paste hotkey (click, then press the keys), paste speed, always 1:1 |
 
 Everything is applied to a **side-by-side copy** in `%LOCALAPPDATA%\Programs\GLKVM-mod`: the stock install is never touched, no admin rights are needed, and uninstalling is one command. Login, device list and settings are shared with the stock client (same `%APPDATA%\gl-kvm`), so it is a drop-in replacement. Only one of the two can run at a time; if the stock client is still running when you start the mod, the mod asks whether to close it and take over.
 
 ## Requirements
 
-* Windows 10/11 with the stock GLKVM desktop client installed (default `C:\Program Files\GLKVM`, tested with 1.5.0). Download it from the GL-iNet app page: https://www.gl-inet.com/en-de/pages/app-rm
+* Windows 10/11 with the stock GLKVM desktop client installed (default `C:\Program Files\GLKVM`, tested with 1.5.0 and 1.5.1). Download it from the GL-iNet app page: https://www.gl-inet.com/en-de/pages/app-rm
 * [Bun](https://bun.sh) 1.x (the JavaScript runtime that runs the patch script; Node.js is not needed). Install it with `powershell -c "irm bun.sh/install.ps1 | iex"` (or `winget install Oven-sh.Bun`, or `npm i -g bun`), then open a new terminal so `bun` is on your PATH.
 * No admin rights: the default install writes only to `%LOCALAPPDATA%\Programs\GLKVM-mod` and your Start Menu.
 
@@ -49,6 +50,7 @@ Other forms: `bun patch.ts build` (only produce `build/app`), `bun patch.ts inst
 * **Session tab right-click menu**: move to its own window / into the main window, paste local clipboard, resize to KVM resolution, and the checkboxes *Always open sessions in a new window*, *Slow paste*, *Always open sessions at 1:1*; the last entry opens this repo.
 * **"+" at the end of the tab strip**: remembered sessions, local-access devices, *Choose from device list...*.
 * **Toolbar button next to fullscreen** (inside the KVM page): resize the window to the KVM resolution. If the resolution doesn't fit on the screen the window takes the largest same-aspect size and tells you.
+* **Remember passwords** (Settings → General → *Sessions (ui-mod)* → *Remember session passwords: On*): a *Remember my password* checkbox appears on each device's login screen. Log in once with it ticked and the password is saved (encrypted); next time the login form is filled and submitted automatically. A wrong saved password is retried at most twice, then left for you to type. Turn the setting off to erase all saved passwords.
 * **Ctrl+Alt+V** (default): types your local clipboard into the remote machine. Failures (empty clipboard, device refused, no session focused) show as Windows notifications.
 
 ## Settings
@@ -61,6 +63,8 @@ All in Settings → General → *Sessions (ui-mod)*; they live in the client's o
 | `remoteOpenMode` | `"tab"` | `"window"` = every device opens in its own window (Shift+click is then irrelevant) |
 | `remotePasteHotkey` | `"Ctrl+Alt+V"` | accelerator-style, e.g. `"Ctrl+Shift+V"`, `"CmdOrCtrl+Alt+P"`, `"F9"` (set it from the UI by clicking the current value and pressing the keys) |
 | `remotePasteSlow` | `false` | send `slow=1` to the device (longer inter-key delay) |
+| `rememberPasswords` | `false` | opt-in: save device login passwords (encrypted via Windows DPAPI) and auto-fill them; turning it off wipes `sessionPasswords` |
+| `sessionPasswords` | `{}` | per-device encrypted login passwords (managed automatically; never plaintext) |
 | `remoteFitOnOpen` | `false` | always open sessions at 1:1: new windows open straight at the last known 1:1 size of that device (regardless of the window they were opened from) and are re-fitted as soon as video shows |
 | `remoteFitSizes` | `{}` | last 1:1 window size per device (managed automatically) |
 | `recentSessions` | `[]` | last 12 sessions, used by the "+" menu (managed automatically) |
@@ -94,7 +98,9 @@ This repository contains only the patch tooling and the injected code; no GL-iNe
 
 **0.1.6**
 
-* Fix: tearing a tab out by dragging it away from the strip threw `ReferenceError: STRIP is not defined` (the strip height was only defined inside two other functions); it is now one module-level `GL_STRIP` used by every drag/drop check.
+* Rebuilt for GLKVM client 1.5.1 (updated the home router-guard and settings-component anchors, which are now resolved per build).
+* Remember session passwords (opt-in): a *Remember my password* checkbox on the device login screen; passwords stored encrypted with Windows DPAPI, auto-filled on the next login, wiped when the setting is turned off.
+* Fix: tearing a tab out by dragging it away from the strip threw `ReferenceError: STRIP is not defined`; the strip height is now one module-level `GL_STRIP` used by every drag/drop check.
 
 **0.1.5**
 

@@ -240,6 +240,160 @@ function glInjectFitButton(frameProcessId, frameRoutingId) {
     const origin = new URL(frame.url).origin;
     if (!glDeviceOrigins.has(origin)) return;
     frame.executeJavaScript(GL_FIT_BUTTON_INJECT, true).then((r) => glLog("fit button", r, origin)).catch((e) => glWarn("fit button inject failed", String(e)));
+    glInjectPasswordHelper(frame, origin);
+  } catch {
+  }
+}
+// --- remember session passwords (opt-in) ---------------------------------------
+// Secrets are encrypted with Electron safeStorage (Windows DPAPI, tied to the OS
+// user account) and stored as base64; nothing is ever written in plaintext.
+function glPasswordsEnabled() {
+  return !!store.get("rememberPasswords") && require$$0$2.safeStorage.isEncryptionAvailable();
+}
+function glDeviceIdForOrigin(origin) {
+  for (const [id, p] of glDeviceParams) {
+    if (glOriginOf(p.channelIp) === origin) return id;
+  }
+  return null;
+}
+function glSavePassword(deviceId, password) {
+  if (!glPasswordsEnabled() || !deviceId || !password) return;
+  try {
+    const all = Object.assign({}, store.get("sessionPasswords") || {});
+    all[deviceId] = require$$0$2.safeStorage.encryptString(String(password)).toString("base64");
+    store.set("sessionPasswords", all);
+    glLog("saved session password for", deviceId);
+  } catch (e) {
+    glWarn("could not save password", String(e));
+  }
+}
+function glGetPassword(deviceId) {
+  if (!glPasswordsEnabled() || !deviceId) return null;
+  try {
+    const enc = (store.get("sessionPasswords") || {})[deviceId];
+    if (!enc) return null;
+    return require$$0$2.safeStorage.decryptString(Buffer.from(enc, "base64"));
+  } catch (e) {
+    glWarn("could not decrypt password", String(e));
+    return null;
+  }
+}
+function glForgetPassword(deviceId) {
+  const all = Object.assign({}, store.get("sessionPasswords") || {});
+  if (deviceId in all) {
+    delete all[deviceId];
+    store.set("sessionPasswords", all);
+    glLog("forgot session password for", deviceId);
+  }
+}
+try {
+  // turning the setting off wipes the stored secrets
+  store.onDidChange("rememberPasswords", (val) => {
+    if (!val && Object.keys(store.get("sessionPasswords") || {}).length) {
+      store.set("sessionPasswords", {});
+      glLog("remember-passwords disabled, cleared stored session passwords");
+    }
+  });
+} catch {
+}
+// Runs inside the device frame. Captures the password when a login attempt
+// Runs inside the device frame. Adds a "Remember my password" checkbox to the
+// device login form; if a saved password is provided it fills and submits the
+// form; on a successful login (form gone within 15s) it reports the password up
+// to the wrapper to be stored (only while the checkbox is ticked).
+function glPasswordFrameScript(savedPassword, deviceId, canSave) {
+  return `(() => {
+  if (window.__glModPwd) return "already";
+  window.__glModPwd = true;
+  const SAVED = ${JSON.stringify(savedPassword || "")};
+  const DEVICE = ${JSON.stringify(deviceId || "")};
+  const CAN_SAVE = ${canSave ? "true" : "false"};
+  const post = (m) => { try { window.parent.postMessage(JSON.stringify(m), "*"); } catch (e) {} };
+  const pwInput = () => document.querySelector('input[type="password"]');
+  const loginBtn = () => Array.from(document.querySelectorAll("button")).find((b) => /log\\s*in|sign\\s*in|\\u767b\\u5f55/i.test(b.textContent || "")) || document.querySelector("button.ant-btn-primary");
+  const isLogin = () => !!pwInput();
+  const remember = () => { const c = document.getElementById("gl-mod-remember"); return !!(c && c.checked); };
+  const setVal = (el, v) => {
+    try {
+      const d = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value");
+      d.set.call(el, v);
+    } catch (e) { el.value = v; }
+    el.dispatchEvent(new Event("input", { bubbles: true }));
+    el.dispatchEvent(new Event("change", { bubbles: true }));
+  };
+  const addCheckbox = () => {
+    if (!CAN_SAVE || document.getElementById("gl-mod-remember")) return;
+    const btn = loginBtn();
+    if (!btn) return;
+    const wrap = document.createElement("label");
+    wrap.style.cssText = "display:flex;align-items:center;gap:6px;margin:12px 0 0;font-size:13px;cursor:pointer;user-select:none;opacity:.85;justify-content:center";
+    const c = document.createElement("input");
+    c.type = "checkbox";
+    c.id = "gl-mod-remember";
+    c.checked = !!SAVED;
+    c.style.cssText = "width:14px;height:14px;cursor:pointer;margin:0";
+    const s = document.createElement("span");
+    s.textContent = "Remember my password";
+    wrap.appendChild(c);
+    wrap.appendChild(s);
+    (btn.closest("form") || btn.parentElement || btn).appendChild(wrap);
+  };
+  let watching = false;
+  const watchSuccess = (pw) => {
+    if (watching || !pw) return;
+    watching = true;
+    const t0 = Date.now();
+    const iv = setInterval(() => {
+      if (!isLogin()) {
+        clearInterval(iv); watching = false;
+        if (remember()) post({ glMod: "savePw", deviceId: DEVICE, password: pw, remember: true });
+        else post({ glMod: "savePw", deviceId: DEVICE, remember: false });
+      } else if (Date.now() - t0 > 15000) {
+        clearInterval(iv); watching = false;
+      }
+    }, 400);
+  };
+  const onSubmit = () => { const el = pwInput(); if (el && el.value) watchSuccess(el.value); };
+  document.addEventListener("click", (e) => {
+    const b = e.target && e.target.closest ? e.target.closest("button") : null;
+    if (b && b === loginBtn()) setTimeout(onSubmit, 0);
+  }, true);
+  document.addEventListener("keydown", (e) => { if (e.key === "Enter" && pwInput()) setTimeout(onSubmit, 0); }, true);
+  const KEY = "glModAutoTries:" + location.host;
+  const autofill = () => {
+    if (!SAVED) return;
+    const el = pwInput();
+    if (!el || el.dataset.glModFilled) return;
+    let tries = 0;
+    try { tries = parseInt(sessionStorage.getItem(KEY) || "0", 10) || 0; } catch (e) {}
+    if (tries >= 2) return; // give up auto-submitting a wrong saved password
+    el.dataset.glModFilled = "1";
+    setVal(el, SAVED);
+    try { sessionStorage.setItem(KEY, String(tries + 1)); } catch (e) {}
+    setTimeout(() => { const b = loginBtn(); if (b) { watchSuccess(SAVED); b.click(); } }, 300);
+  };
+  const scan = () => { if (isLogin()) { addCheckbox(); autofill(); } };
+  scan();
+  new MutationObserver(scan).observe(document.documentElement, { childList: true, subtree: true });
+  return "installed";
+})()`;
+}
+function glHandleSavePw(payload) {
+  const { deviceId, password, remember } = payload || {};
+  if (!deviceId) return;
+  if (remember && password) glSavePassword(deviceId, password);
+  else glForgetPassword(deviceId);
+}
+function glInjectPasswordHelper(frame) {
+  try {
+    if (!frame || !frame.url) return;
+    const origin = new URL(frame.url).origin;
+    if (!glDeviceOrigins.has(origin)) return;
+    const canSave = glPasswordsEnabled();
+    const deviceId = glDeviceIdForOrigin(origin);
+    const saved = canSave ? glGetPassword(deviceId) : null;
+    if (!canSave && !saved) return;
+    frame.executeJavaScript(glPasswordFrameScript(saved, deviceId, canSave), true).catch((e) => glWarn("password helper inject failed", String(e)));
   } catch {
   }
 }

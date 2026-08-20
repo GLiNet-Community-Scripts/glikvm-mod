@@ -1,7 +1,8 @@
 // glikvm-mod: "Sessions (ui-mod)" section for the home window's General Settings page.
 // Injected into the home renderer bundle right before the GeneralSettings component,
 // so every identifier used here (defineComponent, ref, computed, createVNode, ...,
-// useStorageRef, GlMenuItem, Wo, _sfc_main$19 = BaseDropdown, i18n) is the bundle's own.
+// and __GL_DROPDOWN__ is replaced at patch time with the bundle var for BaseDropdown;
+// useStorageRef, GlMenuItem, Wo, __GL_DROPDOWN__ = BaseDropdown, i18n) is the bundle's own.
 const GL_MOD_DEFAULT_HOTKEY = "Ctrl+Alt+V";
 const GL_MOD_I18N = {
   title: "Sessions (ui-mod __GL_MOD_VERSION__)",
@@ -24,7 +25,11 @@ const GL_MOD_I18N = {
   start: "Start screen",
   startDesc: "Which page the app opens on at startup",
   startRemote: "Remote Access",
-  startLocal: "Local Access"
+  startLocal: "Local Access",
+  pwd: "Remember session passwords",
+  pwdDesc: "Save each device's login password (encrypted with Windows, tied to your account) and fill it in automatically; turning this off deletes all saved passwords",
+  pwdOff: "Off",
+  pwdOn: "On"
 };
 try {
   for (const loc of ["en", "zh"]) i18n.global.mergeLocaleMessage(loc, { uimod: GL_MOD_I18N });
@@ -45,6 +50,14 @@ const GlModSettings = /* @__PURE__ */ defineComponent({
     });
     const startScreen = useStorageRef("startScreen", "remote");
     const StartOptions = [new GlMenuItem("remote", "uimod.startRemote"), new GlMenuItem("local", "uimod.startLocal")];
+    const pwdRaw = useStorageRef("rememberPasswords");
+    const rememberPwd = computed({
+      get: () => pwdRaw.value ? "on" : "off",
+      set: (v) => {
+        pwdRaw.value = v === "on";
+      }
+    });
+    const PwdOptions = [new GlMenuItem("off", "uimod.pwdOff"), new GlMenuItem("on", "uimod.pwdOn")];
     const fitRaw = useStorageRef("remoteFitOnOpen");
     const fitOnOpen = computed({
       get: () => fitRaw.value ? "on" : "off",
@@ -96,7 +109,7 @@ const GlModSettings = /* @__PURE__ */ defineComponent({
         ]),
         control
       ]);
-      const dropdown = (model, options) => createVNode(_sfc_main$19, {
+      const dropdown = (model, options) => createVNode(__GL_DROPDOWN__, {
         value: model.value,
         "onUpdate:value": (v) => {
           model.value = v;
@@ -133,7 +146,8 @@ const GlModSettings = /* @__PURE__ */ defineComponent({
         row("uimod.openIn", "uimod.openInDesc", dropdown(openMode, OpenModeOptions)),
         row("uimod.hotkey", "uimod.hotkeyDesc", hotkeyControl),
         row("uimod.speed", "uimod.speedDesc", dropdown(pasteSpeed, PasteSpeedOptions)),
-        row("uimod.fit", "uimod.fitDesc", dropdown(fitOnOpen, FitOptions))
+        row("uimod.fit", "uimod.fitDesc", dropdown(fitOnOpen, FitOptions)),
+        row("uimod.pwd", "uimod.pwdDesc", dropdown(rememberPwd, PwdOptions))
       ]);
     };
   }

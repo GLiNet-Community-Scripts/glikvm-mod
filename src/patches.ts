@@ -34,6 +34,12 @@ function replaceRange(src: string, startAnchor: string, endAnchor: string, repla
   return src.slice(0, start) + replacement + src.slice(end);
 }
 
+function findComponentVar(src: string, componentName: string): string {
+  const m = src.match(new RegExp(String.raw`const (_sfc_main\$\w+) = /\* @__PURE__ \*/ defineComponent\({\n  __name: "${componentName}"`));
+  if (!m) throw new Error(`cannot find the ${componentName} component in the bundle`);
+  return m[1];
+}
+
 function replaceRegexOnce(src: string, re: RegExp, replacement: string, label: string): string {
   const matches = src.match(new RegExp(re.source, re.flags.includes("g") ? re.flags : re.flags + "g"));
   if (!matches || matches.length !== 1) throw new Error(`[${label}] regex matched ${matches?.length ?? 0} times, expected 1`);
@@ -69,6 +75,7 @@ const mainPatches: Patch[] = [
           "    glMoveDevice: (_2, deviceId, target) => glMoveDevice(deviceId, target),\n",
           "    glNewSession: (event) => glShowNewSessionMenu(event),\n",
           "    glTabDragEnd: (event, payload) => glOnTabDragEnd(event, payload),\n",
+          "    glSavePw: (_2, payload) => glHandleSavePw(payload),\n",
           "    glTabDragOver: (event, payload) => glOnTabDragOver(event, payload),\n",
           "    glFitWindow: (event) => {\n",
           "      const win = require$$0$2.BrowserWindow.fromWebContents(event.sender);\n",
@@ -135,6 +142,8 @@ const mainPatches: Patch[] = [
           "    remoteFitOnOpen: false,\n",
           "    remoteFitSizes: {},\n",
           '    startScreen: "remote",\n',
+          "    rememberPasswords: false,\n",
+          "    sessionPasswords: {},\n",
           "    deviceImages: [],\n",
         ].join(""),
         "main.store.defaults",
@@ -175,6 +184,7 @@ const preloadPatches: Patch[] = [
           '  glMoveDevice: (deviceId, target) => electron.ipcRenderer.send("glMoveDevice", deviceId, target),\n',
           '  glNewSession: () => electron.ipcRenderer.send("glNewSession"),\n',
           '  glTabDragEnd: (payload) => electron.ipcRenderer.send("glTabDragEnd", payload),\n',
+          '  glSavePw: (payload) => electron.ipcRenderer.send("glSavePw", payload),\n',
           '  glTabDragOver: (payload) => electron.ipcRenderer.send("glTabDragOver", payload),\n',
           '  glFitWindow: () => electron.ipcRenderer.send("glFitWindow"),\n',
         ].join(""),
@@ -375,6 +385,7 @@ const rendererPatches = (dir: string): Patch[] => {
             "      try {\n",
             '        const d = typeof e.data === "string" ? JSON.parse(e.data) : e.data;\n',
             '        if (d && d.glMod === "fit") window.utils.glFitWindow();\n',
+            '        else if (d && d.glMod === "savePw") window.utils.glSavePw({ deviceId: d.deviceId, password: d.password, remember: d.remember });\n',
             "      } catch {\n",
             "      }\n",
             "    });\n",
@@ -405,7 +416,7 @@ const homePatches = (dir: string): Patch[] => [
     apply: (src) =>
       replaceOnce(
         src,
-        "router.beforeEach((to) => {\n  if (to.meta.auth) {\n",
+        'router.beforeEach((to) => {\n  if (to.name === "layout") {\n',
         [
           "// glikvm-mod: honour the 'start screen' setting on the very first navigation only",
           "let glModStartHandled = false;",
@@ -428,7 +439,7 @@ const homePatches = (dir: string): Patch[] => [
           '  if (to.path === "/deviceList" || to.path === "/localAccess") window.__glModBackTarget = to.fullPath;',
           "});",
           "router.beforeEach((to) => {",
-          "  if (to.meta.auth) {",
+          '  if (to.name === "layout") {',
           "",
         ].join("\n"),
         "home.startScreen",
@@ -458,11 +469,14 @@ const homePatches = (dir: string): Patch[] => [
     file: findHomeBundle(dir),
     what: "home: add 'Sessions (ui-mod)' section to General Settings (open mode, paste hotkey, paste speed)",
     apply: (src) => {
+      // the minified _sfc_main$X suffixes shift between client releases; resolve them per build
+      const generalSettingsVar = findComponentVar(src, "GeneralSettings");
+      const dropdownVar = findComponentVar(src, "BaseDropdown");
+      const anchor = `const ${generalSettingsVar} = /* @__PURE__ */ defineComponent({\n  __name: "GeneralSettings",\n`;
       src = replaceOnce(
         src,
-        'const _sfc_main$c = /* @__PURE__ */ defineComponent({\n  __name: "GeneralSettings",\n',
-        inject("home-settings.js").replace("__GL_MOD_VERSION__", MOD_VERSION) +
-          'const _sfc_main$c = /* @__PURE__ */ defineComponent({\n  __name: "GeneralSettings",\n',
+        anchor,
+        inject("home-settings.js").replace("__GL_MOD_VERSION__", MOD_VERSION).replace(/__GL_DROPDOWN__/g, dropdownVar) + anchor,
         "home.settings.component",
       );
       // mount it as the last child of the settings content, right after the "when close window" row
