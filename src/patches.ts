@@ -5,7 +5,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
-export const MOD_VERSION = "0.1.6";
+export const MOD_VERSION = "0.1.7";
 export const REPO_URL = "https://github.com/emaspa/glikvm-mod";
 
 export type Patch = {
