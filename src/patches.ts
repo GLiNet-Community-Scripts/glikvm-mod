@@ -7,6 +7,10 @@ import path from "node:path";
 
 export const MOD_VERSION = "0.1.7";
 export const REPO_URL = "https://github.com/emaspa/glikvm-mod";
+// Stock client versions this mod's anchors were written and tested against.
+// Other versions abort with a clear message before patching (override with --force;
+// the anchored patches still fail loudly if the code actually moved).
+export const SUPPORTED_APP_VERSIONS = ["1.5.1"];
 
 export type Patch = {
   /** file inside the extracted asar, forward slashes */

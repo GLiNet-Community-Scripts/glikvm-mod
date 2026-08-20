@@ -16,7 +16,7 @@ import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
 import { extractAll } from "@electron/asar";
-import { allPatches, MOD_VERSION } from "./src/patches";
+import { allPatches, MOD_VERSION, SUPPORTED_APP_VERSIONS } from "./src/patches";
 
 const argv = process.argv.slice(2);
 const cmd = argv.find((a) => !a.startsWith("--")) ?? "help";
@@ -77,6 +77,19 @@ function build() {
   extractAll(asar, BUILD_APP);
   const pkg = JSON.parse(fs.readFileSync(path.join(BUILD_APP, "package.json"), "utf8"));
   log(`stock client version ${pkg.version}`);
+  if (!SUPPORTED_APP_VERSIONS.includes(pkg.version)) {
+    const supported = SUPPORTED_APP_VERSIONS.join(", ");
+    const newerClient = pkg.version.localeCompare(SUPPORTED_APP_VERSIONS[SUPPORTED_APP_VERSIONS.length - 1], undefined, { numeric: true }) > 0;
+    const hint = newerClient
+      ? `Your GLKVM is newer than the mod - check ${"https://github.com/emaspa/glikvm-mod"} for an updated mod (git pull) before patching.`
+      : `Your GLKVM is older than what this mod targets - update the client, or check out an older mod tag.`;
+    if (!flag("force")) {
+      die(
+        `glikvm-mod ${MOD_VERSION} supports GLKVM ${supported}, but the installed client is ${pkg.version}.\n  ${hint}\n  To try anyway: add --force (patching still aborts safely if the code moved).`,
+      );
+    }
+    log(`WARNING: GLKVM ${pkg.version} is not a supported version (${supported}); continuing because of --force`);
+  }
   const patches = allPatches(BUILD_APP);
   const touched = new Set<string>();
   for (const p of patches) {

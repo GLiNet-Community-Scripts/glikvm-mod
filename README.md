@@ -42,7 +42,7 @@ bun patch.ts uninstall      # remove the copy + shortcut
 
 Other forms: `bun patch.ts build` (only produce `build/app`), `bun patch.ts install --inplace` (write `resources\app` into the stock install; Electron prefers that dir over `app.asar`; needs an elevated shell; `uninstall --inplace` reverts), `--src <dir>` / `--dest <dir>` to override locations.
 
-**After GLKVM updates itself**, run `bun patch.ts install` again; `status` warns when the stock `app.asar` no longer matches what the mod was built from. Every patch is anchored on unique snippets of the stock code and aborts loudly if an anchor moved, so an update can't produce a silently half-patched app. **After re-installing the mod**, quit and restart "GLKVM (mod)" to pick up the new files.
+**After GLKVM updates itself**, run `bun patch.ts install` again; `status` warns when the stock `app.asar` no longer matches what the mod was built from. The patcher checks the client version first and refuses versions the mod does not list as supported (currently 1.5.1), telling you whether to `git pull` a newer mod or update the client; `--force` tries anyway. Every patch is anchored on unique snippets of the stock code and aborts loudly if an anchor moved, so an update can't produce a silently half-patched app. **After re-installing the mod**, quit and restart "GLKVM (mod)" to pick up the new files.
 
 ## Using it
 
@@ -100,6 +100,7 @@ This repository contains only the patch tooling and the injected code; no GL-iNe
 
 * Rebuilt for GLKVM client 1.5.1 (updated the home router-guard and settings-component anchors, which are now resolved per build).
 * Remember session passwords (opt-in): a *Remember my password* checkbox on the device login screen; passwords stored encrypted with Electron safeStorage (Windows DPAPI), auto-filled on the next login, wiped when the setting is turned off.
+* The patcher refuses to patch a client version the mod was not built for (clear message instead of a cryptic anchor error; `--force` overrides).
 
 **0.1.6**
 
