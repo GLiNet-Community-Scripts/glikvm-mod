@@ -27,7 +27,7 @@ const GL_MOD_I18N = {
   startRemote: "Remote Access",
   startLocal: "Local Access",
   pwd: "Remember session passwords",
-  pwdDesc: "Save each device's login password (encrypted with Windows, tied to your account) and fill it in automatically; turning this off deletes all saved passwords",
+  pwdDesc: "Save each device's login password (encrypted by the OS keystore, tied to your account) and fill it in automatically; turning this off deletes all saved passwords",
   pwdOff: "Off",
   pwdOn: "On"
 };

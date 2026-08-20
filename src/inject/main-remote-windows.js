@@ -245,8 +245,8 @@ function glInjectFitButton(frameProcessId, frameRoutingId) {
   }
 }
 // --- remember session passwords (opt-in) ---------------------------------------
-// Secrets are encrypted with Electron safeStorage (Windows DPAPI, tied to the OS
-// user account) and stored as base64; nothing is ever written in plaintext.
+// Secrets are encrypted with Electron safeStorage (DPAPI on Windows, the keyring/
+// Keychain elsewhere, tied to the OS user account) and stored as base64; nothing is ever written in plaintext.
 function glPasswordsEnabled() {
   return !!store.get("rememberPasswords") && require$$0$2.safeStorage.isEncryptionAvailable();
 }
