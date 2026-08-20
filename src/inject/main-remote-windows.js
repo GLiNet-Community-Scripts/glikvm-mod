@@ -339,21 +339,22 @@ function glPasswordFrameScript(savedPassword, deviceId, canSave) {
     (btn.closest("form") || btn.parentElement || btn).appendChild(wrap);
   };
   let watching = false;
-  const watchSuccess = (pw) => {
+  // rem is read at submit time: once the login form unmounts on success, the checkbox is gone with it
+  const watchSuccess = (pw, rem) => {
     if (watching || !pw) return;
     watching = true;
     const t0 = Date.now();
     const iv = setInterval(() => {
       if (!isLogin()) {
         clearInterval(iv); watching = false;
-        if (remember()) post({ glMod: "savePw", deviceId: DEVICE, password: pw, remember: true });
+        if (rem) post({ glMod: "savePw", deviceId: DEVICE, password: pw, remember: true });
         else post({ glMod: "savePw", deviceId: DEVICE, remember: false });
       } else if (Date.now() - t0 > 15000) {
         clearInterval(iv); watching = false;
       }
     }, 400);
   };
-  const onSubmit = () => { const el = pwInput(); if (el && el.value) watchSuccess(el.value); };
+  const onSubmit = () => { const el = pwInput(); if (el && el.value) watchSuccess(el.value, remember()); };
   document.addEventListener("click", (e) => {
     const b = e.target && e.target.closest ? e.target.closest("button") : null;
     if (b && b === loginBtn()) setTimeout(onSubmit, 0);
@@ -370,7 +371,7 @@ function glPasswordFrameScript(savedPassword, deviceId, canSave) {
     el.dataset.glModFilled = "1";
     setVal(el, SAVED);
     try { sessionStorage.setItem(KEY, String(tries + 1)); } catch (e) {}
-    setTimeout(() => { const b = loginBtn(); if (b) { watchSuccess(SAVED); b.click(); } }, 300);
+    setTimeout(() => { const b = loginBtn(); if (b) { watchSuccess(SAVED, true); b.click(); } }, 300);
   };
   const scan = () => { if (isLogin()) { addCheckbox(); autofill(); } };
   scan();
