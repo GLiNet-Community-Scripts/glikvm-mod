@@ -338,6 +338,7 @@ function glPasswordFrameScript(savedPassword, deviceId, canSave) {
     wrap.appendChild(s);
     (btn.closest("form") || btn.parentElement || btn).appendChild(wrap);
   };
+  const KEY = "glModAutoTries:" + location.host;
   let watching = false;
   // rem is read at submit time: once the login form unmounts on success, the checkbox is gone with it
   const watchSuccess = (pw, rem) => {
@@ -347,6 +348,7 @@ function glPasswordFrameScript(savedPassword, deviceId, canSave) {
     const iv = setInterval(() => {
       if (!isLogin()) {
         clearInterval(iv); watching = false;
+        try { sessionStorage.removeItem(KEY); } catch (e) {} // login worked: allow a fresh auto-submit next time
         if (rem) post({ glMod: "savePw", deviceId: DEVICE, password: pw, remember: true });
         else post({ glMod: "savePw", deviceId: DEVICE, remember: false });
       } else if (Date.now() - t0 > 15000) {
@@ -360,18 +362,32 @@ function glPasswordFrameScript(savedPassword, deviceId, canSave) {
     if (b && b === loginBtn()) setTimeout(onSubmit, 0);
   }, true);
   document.addEventListener("keydown", (e) => { if (e.key === "Enter" && pwInput()) setTimeout(onSubmit, 0); }, true);
-  const KEY = "glModAutoTries:" + location.host;
+  // a saved password is filled and (once) auto-submitted after a short countdown; any
+  // interaction with the field cancels the auto-submit so you can type a different one
+  let pendingSubmit = null;
+  let userTookOver = false;
+  const cancelAuto = () => {
+    if (pendingSubmit) { clearTimeout(pendingSubmit); pendingSubmit = null; }
+    userTookOver = true;
+  };
   const autofill = () => {
-    if (!SAVED) return;
+    if (!SAVED || userTookOver) return;
     const el = pwInput();
     if (!el || el.dataset.glModFilled) return;
+    el.dataset.glModFilled = "1";
+    ["focus", "mousedown", "keydown", "input", "paste"].forEach((ev) => el.addEventListener(ev, cancelAuto, true));
+    el.addEventListener("focus", () => { try { el.select(); } catch (e) {} });
     let tries = 0;
     try { tries = parseInt(sessionStorage.getItem(KEY) || "0", 10) || 0; } catch (e) {}
-    if (tries >= 2) return; // give up auto-submitting a wrong saved password
-    el.dataset.glModFilled = "1";
     setVal(el, SAVED);
-    try { sessionStorage.setItem(KEY, String(tries + 1)); } catch (e) {}
-    setTimeout(() => { const b = loginBtn(); if (b) { watchSuccess(SAVED, true); b.click(); } }, 300);
+    if (tries >= 1) return; // already auto-submitted once this session; leave it filled for you to correct or type over
+    pendingSubmit = setTimeout(() => {
+      pendingSubmit = null;
+      if (userTookOver) return;
+      try { sessionStorage.setItem(KEY, "1"); } catch (e) {}
+      const b = loginBtn();
+      if (b) { watchSuccess(SAVED, true); b.click(); }
+    }, 1400);
   };
   const scan = () => { if (isLogin()) { addCheckbox(); autofill(); } };
   scan();
