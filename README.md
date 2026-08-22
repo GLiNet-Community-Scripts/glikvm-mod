@@ -1,6 +1,6 @@
 # glikvm-mod
 
-Patches for the **GLKVM Windows desktop client** (GL-iNet's Electron app for the Comet / RM1 / RM10 KVMs, `C:\Program Files\GLKVM`, tested with 1.5.0 and 1.5.1). It shows up in the app as **ui-mod 0.1.10**.
+Patches for the **GLKVM Windows desktop client** (GL-iNet's Electron app for the Comet / RM1 / RM10 KVMs, `C:\Program Files\GLKVM`, tested with 1.5.0 and 1.5.1 including r2). It shows up in the app as **ui-mod 0.1.10**.
 
 ## What it adds
 
@@ -24,7 +24,7 @@ Everything is applied to a **side-by-side copy** in `%LOCALAPPDATA%\Programs\GLK
 
 ## Requirements
 
-* Windows 10/11 with the stock GLKVM desktop client installed (default `C:\Program Files\GLKVM`, tested with 1.5.0 and 1.5.1). Download it from the GL-iNet app page: https://www.gl-inet.com/en-de/pages/app-rm
+* Windows 10/11 with the stock GLKVM desktop client installed (default `C:\Program Files\GLKVM`, tested with 1.5.0 and 1.5.1 including r2). Download it from the GL-iNet app page: https://www.gl-inet.com/en-de/pages/app-rm
 * [Bun](https://bun.sh) 1.x (the JavaScript runtime that runs the patch script; Node.js is not needed). Install it with `powershell -c "irm bun.sh/install.ps1 | iex"` (or `winget install Oven-sh.Bun`, or `npm i -g bun`), then open a new terminal so `bun` is on your PATH.
 * No admin rights: the default install writes only to `%LOCALAPPDATA%\Programs\GLKVM-mod` and your Start Menu.
 
@@ -63,7 +63,7 @@ All in Settings → General → *Sessions (ui-mod)*; they live in the client's o
 | `remoteOpenMode` | `"tab"` | `"window"` = every device opens in its own window (Shift+click is then irrelevant) |
 | `remotePasteHotkey` | `"Ctrl+Alt+V"` | accelerator-style, e.g. `"Ctrl+Shift+V"`, `"CmdOrCtrl+Alt+P"`, `"F9"` (set it from the UI by clicking the current value and pressing the keys) |
 | `remotePasteSlow` | `false` | send `slow=1` to the device (longer inter-key delay) |
-| `rememberPasswords` | `false` | opt-in: save device login passwords (encrypted via Windows DPAPI) and auto-fill them; turning it off wipes `sessionPasswords` |
+| `rememberPasswords` | `false` | opt-in: save device login passwords (encrypted by the OS keystore; Windows DPAPI) and auto-fill them; turning it off wipes `sessionPasswords` |
 | `sessionPasswords` | `{}` | per-device encrypted login passwords (managed automatically; never plaintext) |
 | `remoteFitOnOpen` | `false` | always open sessions at 1:1: new windows open straight at the last known 1:1 size of that device (regardless of the window they were opened from) and are re-fitted as soon as video shows |
 | `remoteFitSizes` | `{}` | last 1:1 window size per device (managed automatically) |
@@ -91,10 +91,21 @@ This repository contains only the patch tooling and the injected code; no GL-iNe
 * Auth for paste relies on the client having logged into that device UI once (it stores the token and sets the cookie). If a device replies 401 you'll get a notification saying so: log in inside the session, then retry.
 * Ctrl+Alt+V was chosen so Ctrl+Shift+V still reaches remote terminals. AltGr+V on layouts where that types a character will be swallowed; change the hotkey in that case.
 * The 1:1 size is computed in CSS pixels; on a display scaled above 100% the picture is 1:1 in CSS pixels, not device pixels.
+* Remembered passwords are decrypted only by your Windows account on this machine (Electron `safeStorage`/DPAPI); copying `GLKVM.json` to another user or PC yields unusable blobs. Anything running as you could still ask the same API to decrypt them, so treat it like a browser password store.
 * Cloud sessions in the "+" menu reuse the relay URL they were opened with; if it has expired the session shows the usual access-denied page and you can reopen the device from the home window.
-* Tested against client 1.5.0 / Electron 34.5.8 on Windows 11 with four RM10 units on firmware V1.10.0.
+* Tested against client 1.5.1 r2 / Electron 34.5.8 on Windows 11 with four RM10 units on firmware V1.10.0.
 
 ## Changelog
+
+**0.1.10**
+
+* Fix: a remembered password could never be replaced by a new one. The device login box has a reveal (eye) toggle that flips the input between `type=password` and `type=text`, and every lookup keyed on `input[type="password"]` - so once the field was revealed the mod lost track of it, captured nothing at submit, and mis-read the form as gone. The field is now tagged once and held by live element reference, whatever type it reports.
+* The password that actually logs you in is the one saved: the field value is tracked continuously, and a save requires a real login attempt plus the form staying gone, so a re-render can't store the wrong value. Per-attempt state resets when the login form comes back after a logout.
+
+**0.1.8**
+
+* Rebuilt for GLKVM client 1.5.1 r2.
+* The auto-submit of a saved password is now cancellable: it fills the field and waits ~1.6s, and clicking or typing in the field cancels it so you can enter a different password.
 
 **0.1.7**
 
