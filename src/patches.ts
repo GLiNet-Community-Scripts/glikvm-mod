@@ -5,7 +5,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
-export const MOD_VERSION = "0.1.9";
+export const MOD_VERSION = "0.1.10";
 export const REPO_URL = "https://github.com/emaspa/glikvm-mod";
 // Stock client versions this mod's anchors were written and tested against.
 // Other versions abort with a clear message before patching (override with --force;

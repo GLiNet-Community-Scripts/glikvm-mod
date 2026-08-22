@@ -308,8 +308,18 @@ function glPasswordFrameScript(savedPassword, deviceId, canSave) {
   const SAVED = ${JSON.stringify(savedPassword || "")};
   const DEVICE = ${JSON.stringify(deviceId || "")};
   const CAN_SAVE = ${canSave ? "true" : "false"};
+  let currentSaved = SAVED;
   const post = (m) => { try { window.parent.postMessage(JSON.stringify(m), "*"); } catch (e) {} };
-  const pwInput = () => document.querySelector('input[type="password"]');
+  // The login box has a reveal (eye) toggle that flips the input between type=password
+  // and type=text, so we tag the element once and keep a live reference to it instead of
+  // re-querying by type - otherwise the field vanishes from under us the moment it is revealed.
+  let fieldEl = null;
+  const pwInput = () => {
+    if (fieldEl && fieldEl.isConnected) return fieldEl;
+    fieldEl = document.querySelector('input[data-gl-mod-field="1"]') || document.querySelector('input[type="password"]');
+    if (fieldEl) fieldEl.dataset.glModField = "1";
+    return fieldEl;
+  };
   const loginBtn = () => Array.from(document.querySelectorAll("button")).find((b) => /log\\s*in|sign\\s*in|\\u767b\\u5f55/i.test(b.textContent || "")) || document.querySelector("button.ant-btn-primary");
   const isLogin = () => !!pwInput();
   const remember = () => { const c = document.getElementById("gl-mod-remember"); return !!(c && c.checked); };
@@ -342,55 +352,80 @@ function glPasswordFrameScript(savedPassword, deviceId, canSave) {
     (btn.closest("form") || btn.parentElement || btn).appendChild(wrap);
   };
   const KEY = "glModAutoTries:" + location.host;
-  const isPwField = (el) => !!el && el.tagName === "INPUT" && el.type === "password";
-  // The password captured at the moment of the submit that is about to log you in, plus
-  // whether "remember" was ticked. We save exactly this on success, so whatever you type
-  // (or the auto-filled value, if you let it auto-submit) is what gets stored.
-  let submittedPw = null;
-  let submittedRemember = !!SAVED;
+  // Whatever is in the login field right now, tracked continuously (typing, pasting, the
+  // reveal toggle, our own auto-fill). Whichever value is there when the login succeeds is
+  // the one that got you in, so that is the one we save - a newly typed password wins.
+  let liveValue = "";
+  let lastRemember = !!SAVED;
+  let submitSeen = false; // a login was actually attempted since the form appeared
   let pendingSubmit = null;
   let userTouched = false; // you interacted with the field: don't auto-fill or auto-submit
-  const captureSubmit = () => {
-    const el = pwInput();
-    if (el && el.value) { submittedPw = el.value; submittedRemember = remember(); }
-  };
+  const isField = (el) => !!el && el === pwInput();
   const onUserActivity = () => {
     userTouched = true;
     if (pendingSubmit) { clearTimeout(pendingSubmit); pendingSubmit = null; }
   };
-  document.addEventListener("mousedown", (e) => { if (isPwField(e.target)) onUserActivity(); }, true);
-  document.addEventListener("input", (e) => { if (!selfFilling && isPwField(e.target)) onUserActivity(); }, true);
+  const sample = () => {
+    const el = pwInput();
+    if (el && el.value) liveValue = el.value;
+    const c = document.getElementById("gl-mod-remember");
+    if (c) lastRemember = !!c.checked;
+  };
+  const noteSubmit = () => { submitSeen = true; setTimeout(sample, 0); };
+  document.addEventListener("mousedown", (e) => { if (isField(e.target)) onUserActivity(); }, true);
+  document.addEventListener("input", (e) => {
+    if (isField(e.target)) { if (!selfFilling) onUserActivity(); liveValue = e.target.value; }
+  }, true);
   document.addEventListener("keydown", (e) => {
-    if (isPwField(e.target)) onUserActivity();
-    if (e.key === "Enter" && pwInput()) setTimeout(captureSubmit, 0);
+    if (isField(e.target)) onUserActivity();
+    if (e.key === "Enter" && pwInput()) noteSubmit();
   }, true);
   document.addEventListener("click", (e) => {
     const b = e.target && e.target.closest ? e.target.closest("button") : null;
-    if (b && b === loginBtn()) setTimeout(captureSubmit, 0);
+    if (b && b === loginBtn()) noteSubmit();
   }, true);
-  document.addEventListener("submit", () => setTimeout(captureSubmit, 0), true);
-  // success detector: when a login form that was on screen disappears, the login worked;
-  // save the password captured at the submit (or clear it if "remember" was unticked)
-  let loginWasShown = false;
+  document.addEventListener("submit", noteSubmit, true);
+  // Success detector: the login field disappearing (for two checks in a row, after an
+  // actual login attempt) means the login went through - save what was in the field.
+  let seen = false;
+  let goneFor = 0;
   setInterval(() => {
-    if (isLogin()) { loginWasShown = true; return; }
-    if (!loginWasShown) return;
-    loginWasShown = false;
+    if (isLogin()) {
+      if (!seen) {
+        // the login form just appeared (first load, or you logged out): fresh attempt
+        seen = true;
+        userTouched = false;
+        submitSeen = false;
+        liveValue = "";
+        const el = pwInput();
+        if (el) delete el.dataset.glModFilled;
+      }
+      goneFor = 0;
+      sample();
+      return;
+    }
+    if (!seen) return;
+    if (++goneFor < 2) return; // ignore a momentary re-render of the form
+    seen = false;
+    goneFor = 0;
     try { sessionStorage.removeItem(KEY); } catch (e) {} // login worked: allow a fresh auto-submit next time
-    if (!CAN_SAVE || submittedPw == null) return;
-    if (submittedRemember && submittedPw) post({ glMod: "savePw", deviceId: DEVICE, password: submittedPw, remember: true });
-    else post({ glMod: "savePw", deviceId: DEVICE, remember: false });
-    submittedPw = null;
+    fieldEl = null;
+    if (!CAN_SAVE || !submitSeen) return;
+    submitSeen = false;
+    if (lastRemember && liveValue) { currentSaved = liveValue; post({ glMod: "savePw", deviceId: DEVICE, password: liveValue, remember: true }); }
+    else { currentSaved = ""; post({ glMod: "savePw", deviceId: DEVICE, remember: false }); }
+    liveValue = "";
   }, 300);
   const autofill = () => {
-    if (!SAVED || userTouched) return;
+    if (!currentSaved || userTouched) return;
     const el = pwInput();
     if (!el) return;
     if (el.value && el.dataset.glModFilled !== "auto") { userTouched = true; return; } // you already typed something
     if (el.dataset.glModFilled === "auto") return;
     el.dataset.glModFilled = "auto";
     el.addEventListener("focus", () => { try { el.select(); } catch (e) {} }); // typing replaces the filled value
-    setVal(el, SAVED);
+    setVal(el, currentSaved);
+    liveValue = currentSaved;
     let tries = 0;
     try { tries = parseInt(sessionStorage.getItem(KEY) || "0", 10) || 0; } catch (e) {}
     if (tries >= 1) return; // already auto-submitted once this session; leave it filled to correct or type over
@@ -398,7 +433,7 @@ function glPasswordFrameScript(savedPassword, deviceId, canSave) {
       pendingSubmit = null;
       if (userTouched) return;
       try { sessionStorage.setItem(KEY, "1"); } catch (e) {}
-      captureSubmit(); // record the auto-filled value as the one being submitted
+      noteSubmit();
       const b = loginBtn();
       if (b) b.click();
     }, 1600);

@@ -1,6 +1,6 @@
 # glikvm-mod
 
-Patches for the **GLKVM Windows desktop client** (GL-iNet's Electron app for the Comet / RM1 / RM10 KVMs, `C:\Program Files\GLKVM`, tested with 1.5.0 and 1.5.1). It shows up in the app as **ui-mod 0.1.9**.
+Patches for the **GLKVM Windows desktop client** (GL-iNet's Electron app for the Comet / RM1 / RM10 KVMs, `C:\Program Files\GLKVM`, tested with 1.5.0 and 1.5.1). It shows up in the app as **ui-mod 0.1.10**.
 
 ## What it adds
 
@@ -17,7 +17,7 @@ Patches for the **GLKVM Windows desktop client** (GL-iNet's Electron app for the
 | Window titles = device name | detached windows (and the main session window, for its active tab) are titled `<device> - GLKVM`, so Alt-Tab and the taskbar are usable |
 | New windows inherit geometry | a moved or Shift-clicked session opens at the same size (and maximized state) as the window it came from, offset by 40 px so both stay visible |
 | Takeover dialog | starting the mod while the stock client is running (for example in the tray) asks whether to close it and take over, instead of silently handing off to the stock window |
-| Visible mod stamp | home footer shows `V1.5.1 release1 · ui-mod 0.1.9`; the About page shows *ui-mod 0.1.9 installed* with a link to this repo; the tab menu footer opens it too (the version used by the update check is untouched) |
+| Visible mod stamp | home footer shows `V1.5.1 release1 · ui-mod 0.1.10`; the About page shows *ui-mod 0.1.10 installed* with a link to this repo; the tab menu footer opens it too (the version used by the update check is untouched) |
 | **Settings UI** | Settings → General → *Sessions (ui-mod)*: start screen, open mode, paste hotkey (click, then press the keys), paste speed, always 1:1 |
 
 Everything is applied to a **side-by-side copy** in `%LOCALAPPDATA%\Programs\GLKVM-mod`: the stock install is never touched, no admin rights are needed, and uninstalling is one command. Login, device list and settings are shared with the stock client (same `%APPDATA%\gl-kvm`), so it is a drop-in replacement. Only one of the two can run at a time; if the stock client is still running when you start the mod, the mod asks whether to close it and take over.
@@ -50,7 +50,7 @@ Other forms: `bun patch.ts build` (only produce `build/app`), `bun patch.ts inst
 * **Session tab right-click menu**: move to its own window / into the main window, paste local clipboard, resize to KVM resolution, and the checkboxes *Always open sessions in a new window*, *Slow paste*, *Always open sessions at 1:1*; the last entry opens this repo.
 * **"+" at the end of the tab strip**: remembered sessions, local-access devices, *Choose from device list...*.
 * **Toolbar button next to fullscreen** (inside the KVM page): resize the window to the KVM resolution. If the resolution doesn't fit on the screen the window takes the largest same-aspect size and tells you.
-* **Remember passwords** (Settings → General → *Sessions (ui-mod)* → *Remember session passwords: On*): a *Remember my password* checkbox appears on each device's login screen. Log in once with it ticked and the password is saved (encrypted); next time the login form is filled and auto-submitted after a short countdown. Click or type in the field to cancel that and enter a different password - submitting a new one (box still ticked) replaces the saved one. Turn the setting off to erase all saved passwords.
+* **Remember passwords** (Settings → General → *Sessions (ui-mod)* → *Remember session passwords: On*): a *Remember my password* checkbox appears on each device's login screen. Log in once with it ticked and the password is saved (encrypted); next time the login form is filled and auto-submitted after a short countdown. Click or type in the field to cancel that and enter a different password - whatever password actually logs you in is the one that gets saved, so correcting a wrong saved password replaces it. Turn the setting off to erase all saved passwords.
 * **Ctrl+Alt+V** (default): types your local clipboard into the remote machine. Failures (empty clipboard, device refused, no session focused) show as Windows notifications.
 
 ## Settings
